@@ -1,0 +1,16 @@
+{
+  "name": "basic-gradle-app",
+  "version": "1.0.0",
+  "description": "A simple Gradle-based Java application deployed with jDeploy",
+  "bin": {
+    "basic-gradle-app": "jdeploy-bundle/jdeploy.js"
+  },
+  "dependencies": {
+    "shelljs": "^0.8.4"
+  },
+  "jdeploy": {
+    "jar": "build/libs/basic-gradle-app-1.0.0.jar",
+    "javaVersion": "11",
+    "title": "Basic Gradle Application"
+  }
+}

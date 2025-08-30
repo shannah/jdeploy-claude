@@ -1,0 +1,17 @@
+{
+  "name": "javafx-desktop-app",
+  "version": "1.0.0",
+  "description": "A JavaFX desktop application deployed with jDeploy",
+  "bin": {
+    "javafx-app": "jdeploy-bundle/jdeploy.js"
+  },
+  "dependencies": {
+    "shelljs": "^0.8.4"
+  },
+  "jdeploy": {
+    "jar": "target/javafx-app-1.0.0.jar",
+    "javaVersion": "11",
+    "javafx": true,
+    "title": "JavaFX Desktop Application"
+  }
+}

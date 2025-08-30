@@ -1,0 +1,40 @@
+plugins {
+    id 'application'
+    id 'java'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+application {
+    mainClass = 'com.example.MainClass'
+}
+
+repositories {
+    mavenCentral()
+}
+
+// Task to copy dependencies to lib/ directory
+task copyDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    into "$buildDir/libs/lib"
+}
+
+// Configure JAR to depend on copied dependencies
+jar {
+    dependsOn copyDependencies
+    archiveBaseName = 'basic-gradle-app'
+    archiveVersion = '1.0.0'
+    
+    manifest {
+        attributes(
+            'Main-Class': application.mainClass,
+            'Class-Path': configurations.runtimeClasspath.collect { "lib/" + it.getName() }.join(' ')
+        )
+    }
+}
