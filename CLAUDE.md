@@ -167,7 +167,66 @@ Create or modify `package.json` with required jDeploy configuration:
 - `jdeploy.javafx`: Set to true for JavaFX apps (default: false)
 - `jdeploy.args`: Array of JVM arguments
 
-## 4. Optional: GitHub Workflows for App Bundles
+## 4. Find and Configure Application Icon
+
+jDeploy uses an `icon.png` file in the project root (same directory as `package.json`) for the application icon.
+
+### Search for Existing Icons
+
+Look for icon files in common locations:
+- `src/main/resources/` (Maven)
+- `src/main/resources/icons/`
+- `src/resources/`
+- `resources/`
+- `assets/`
+- `images/`
+- Project root directory
+
+### Icon Requirements:
+- **Format**: PNG format
+- **Dimensions**: Must be square (256x256, 512x512, or other square sizes)
+- **Filename**: Must be named `icon.png` in project root
+
+### Steps to Configure Icon:
+
+1. **Search for candidate icons:**
+   ```bash
+   find . -name "*.png" -o -name "*.ico" -o -name "*.icns" | grep -i icon
+   find . -name "*.png" | head -10  # Check first 10 PNG files
+   ```
+
+2. **Check image dimensions:**
+   ```bash
+   file candidate-icon.png  # Shows dimensions
+   # Look for square dimensions like 256x256, 512x512, etc.
+   ```
+
+3. **Copy appropriate icon to project root:**
+   ```bash
+   cp src/main/resources/app-icon.png icon.png
+   ```
+
+4. **If no square icon exists:**
+   - Don't worry about it.  jDeploy can proceed without an icon, but the app will use a default icon.
+
+### Common Icon Locations by Framework:
+
+**JavaFX Projects:**
+- Often in `src/main/resources/` or `src/main/resources/images/`
+
+**Spring Boot Projects:**
+- May be in `src/main/resources/static/images/` or `src/main/resources/`
+
+**General Java Projects:**
+- Check `src/main/resources/icons/` or similar
+
+### Validation:
+After copying, verify the icon:
+- File exists: `ls -la icon.png`
+- Is square: `file icon.png` (check dimensions)
+- Reasonable size: Should be at least 64x64, preferably 256x256 or larger
+
+## 5. Optional: GitHub Workflows for App Bundles
 
 Create `.github/workflows/jdeploy.yml`:
 
@@ -246,7 +305,7 @@ jobs:
 
 ```
 
-## 5. Build and Validation Steps
+## 6. Build and Validation Steps
 
 1. **Build the Java project:**
    - Maven: `mvn clean package`
@@ -258,6 +317,10 @@ jobs:
    ```
 
 3. **Validate package.json paths match actual build output**
+
+4. **Verify icon setup:**
+   - Check that `icon.png` exists in project root: `ls -la icon.png`
+   - Verify it's square: `file icon.png`
 
 ## Common Project Patterns
 
