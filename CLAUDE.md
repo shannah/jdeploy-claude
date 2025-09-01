@@ -21,35 +21,35 @@ First, verify the project structure:
 **Maven (using maven-dependency-plugin):**
 ```xml
 <plugin>
-    <groupId>org.apache.maven.plugins</groupId>
-    <artifactId>maven-dependency-plugin</artifactId>
-    <version>3.2.0</version>
-    <executions>
-        <execution>
-            <id>copy-dependencies</id>
-            <phase>package</phase>
-            <goals>
-                <goal>copy-dependencies</goal>
-            </goals>
-            <configuration>
-                <outputDirectory>${project.build.directory}/lib</outputDirectory>
-            </configuration>
-        </execution>
-    </executions>
+   <groupId>org.apache.maven.plugins</groupId>
+   <artifactId>maven-dependency-plugin</artifactId>
+   <version>3.2.0</version>
+   <executions>
+      <execution>
+         <id>copy-dependencies</id>
+         <phase>package</phase>
+         <goals>
+            <goal>copy-dependencies</goal>
+         </goals>
+         <configuration>
+            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+         </configuration>
+      </execution>
+   </executions>
 </plugin>
 <plugin>
-    <groupId>org.apache.maven.plugins</groupId>
-    <artifactId>maven-jar-plugin</artifactId>
-    <version>3.2.2</version>
-    <configuration>
-        <archive>
-            <manifest>
-                <addClasspath>true</addClasspath>
-                <classpathPrefix>lib/</classpathPrefix>
-                <mainClass>com.example.MainClass</mainClass>
-            </manifest>
-        </archive>
-    </configuration>
+<groupId>org.apache.maven.plugins</groupId>
+<artifactId>maven-jar-plugin</artifactId>
+<version>3.2.2</version>
+<configuration>
+   <archive>
+      <manifest>
+         <addClasspath>true</addClasspath>
+         <classpathPrefix>lib/</classpathPrefix>
+         <mainClass>com.example.MainClass</mainClass>
+      </manifest>
+   </archive>
+</configuration>
 </plugin>
 ```
 
@@ -154,6 +154,20 @@ Create or modify `package.json` with required jDeploy configuration:
 }
 ```
 
+**Compose Multiplatform Desktop Application:**
+```json
+"jdeploy": {
+  "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar",
+  "javaVersion": "21",
+  "javafx": false,
+  "title": "My Compose App",
+  "buildCommand": [
+    "./gradlew",
+    ":compose-desktop:buildExecutableJar"
+  ]
+}
+```
+
 ### Required Fields:
 - `name`: Unique NPM package name
 - `bin`: Must include `"jdeploy-bundle/jdeploy.js"`
@@ -216,6 +230,10 @@ Look for icon files in common locations:
 
 **Spring Boot Projects:**
 - May be in `src/main/resources/static/images/` or `src/main/resources/`
+
+**Compose Multiplatform Projects:**
+- Android app launcher icons: `app/src/main/res/mipmap-xxxhdpi/ic_launcher.png`
+- Check for highest resolution (xxxhdpi) Android icons as they are typically square and high quality
 
 **General Java Projects:**
 - Check `src/main/resources/icons/` or similar
@@ -307,18 +325,26 @@ jobs:
 
 ## 6. Build and Validation Steps
 
-1. **Build the Java project:**
+1. **Verify Java version compatibility:**
+   ```bash
+   java -version
+   ./gradlew -version  # For Gradle projects
+   mvn -version        # For Maven projects
+   ```
+   **IMPORTANT**: Update `jdeploy.javaVersion` in package.json to match your project's Java version
+
+2. **Build the Java project:**
    - Maven: `mvn clean package`
    - Gradle: `./gradlew build`
 
-2. **Verify JAR is executable:**
+3. **Verify JAR is executable:**
    ```bash
    java -jar target/your-app.jar
    ```
 
-3. **Validate package.json paths match actual build output**
+4. **Validate package.json paths match actual build output**
 
-4. **Verify icon setup:**
+5. **Verify icon setup:**
    - Check that `icon.png` exists in project root: `ls -la icon.png`
    - Verify it's square: `file icon.png`
 
@@ -338,3 +364,190 @@ jobs:
 2. **Main class not found**: Ensure JAR manifest includes Main-Class
 3. **Missing dependencies**: For non-shaded JARs, ensure lib/ directory is created
 4. **JavaFX issues**: Set `"javafx": true` and verify JavaFX modules are included
+
+---
+
+# Compose Multiplatform Desktop Applications
+
+For Compose Multiplatform projects, follow these specific setup instructions:
+
+## Prerequisites for Compose Multiplatform
+
+1. **Identify Compose Desktop Module**: Look for a module named `compose-desktop`, `desktop`, or similar
+2. **Check Build Structure**: Ensure it has `src/main/kotlin/main.kt` or similar main function
+3. **Verify Dependencies**: Check that it uses `compose.desktop.*` dependencies
+
+## Configure Cross-Platform Shadow JAR Build
+
+**IMPORTANT**: For cross-platform compatibility (Windows, macOS, Linux on both x86_64 and ARM64), you must include ALL platform dependencies, not just `compose.desktop.currentOs`.
+
+### Step 1: Add Shadow Plugin
+
+Add the shadow plugin to your compose-desktop module's `build.gradle.kts`:
+
+```kotlin
+plugins {
+    kotlin("jvm")
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.shadowPlugin) // Add this line
+    application
+}
+```
+
+### Step 2: Configure Cross-Platform Dependencies
+
+Replace `compose.desktop.currentOs` with explicit platform dependencies:
+
+```kotlin
+dependencies {
+    // Include all desktop platforms for cross-platform compatibility
+    implementation(compose.desktop.linux_x64)
+    implementation(compose.desktop.linux_arm64)
+    implementation(compose.desktop.macos_x64)
+    implementation(compose.desktop.macos_arm64)
+    implementation(compose.desktop.windows_x64)
+    // Note: Windows ARM64 not yet supported in Compose Multiplatform 1.8.2
+    // implementation(compose.desktop.windows_arm64)
+    
+    // Your other dependencies...
+    implementation(projects.common)
+}
+
+application {
+    mainClass.set("MainKt") // Adjust based on your main class
+}
+```
+
+### Step 3: Create Build Task
+
+Add a custom build task for jDeploy:
+
+```kotlin
+tasks.register("buildExecutableJar") {
+    dependsOn("shadowJar")
+    doLast {
+        println("Built executable JAR: compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar")
+    }
+}
+```
+
+## Package.json Configuration for Compose
+
+Create or update `package.json` in the project root:
+
+```json
+{
+  "bin": {"myapp": "jdeploy-bundle/jdeploy.js"},
+  "author": "Your Name",
+  "description": "My Compose Multiplatform Desktop App",
+  "main": "index.js",
+  "preferGlobal": true,
+  "repository": "",
+  "version": "1.0.0",
+  "jdeploy": {
+    "jdk": false,
+    "javaVersion": "21",
+    "javafx": false,
+    "title": "My Compose App",
+    "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar",
+    "buildCommand": [
+      "./gradlew",
+      ":compose-desktop:buildExecutableJar"
+    ]
+  },
+  "dependencies": {
+    "command-exists-promise": "^2.0.2",
+    "node-fetch": "2.6.7",
+    "tar": "^4.4.8",
+    "yauzl": "^2.10.0",
+    "shelljs": "^0.8.4"
+  },
+  "license": "ISC",
+  "name": "myapp",
+  "files": ["jdeploy-bundle"],
+  "scripts": {"test": "echo \"Error: no test specified\" && exit 1"}
+}
+```
+
+## Icon Configuration for Compose Projects
+
+For Compose Multiplatform projects, check these locations for icons:
+
+1. **Android launcher icons** (often the best quality):
+   ```bash
+   find . -path "*/app/src/main/res/mipmap-*/*.png"
+   ```
+
+2. **Check highest resolution Android icon**:
+   ```bash
+   file ./app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+   # Should show dimensions like "192 x 192" (square)
+   ```
+
+3. **Copy to project root**:
+   ```bash
+   cp ./app/src/main/res/mipmap-xxxhdpi/ic_launcher.png ./icon.png
+   ```
+
+## Build and Test
+
+1. **Build the cross-platform JAR**:
+   ```bash
+   ./gradlew :compose-desktop:buildExecutableJar
+   ```
+
+2. **Verify JAR size and contents**:
+   ```bash
+   ls -lh compose-desktop/build/libs/
+   # Should be significantly larger (~90MB+) due to all platform native libraries
+   
+   jar -tf compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar | grep -E "\.(so|dll|dylib)$"
+   # Should show native libraries for all platforms
+   ```
+
+3. **Test execution**:
+   ```bash
+   java -jar compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar
+   ```
+
+## Platform Support Status
+
+### ✅ Currently Supported:
+- Linux x86_64
+- Linux ARM64
+- macOS x86_64 (Intel)
+- macOS ARM64 (Apple Silicon)
+- Windows x86_64
+
+### ❌ Not Yet Supported:
+- Windows ARM64 (planned for future Compose Multiplatform releases)
+
+## GitHub Workflow Updates
+
+For Compose projects, update your `.github/workflows/jdeploy.yml` build arguments:
+
+```yaml
+- name: Build with Gradle
+  uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
+  with:
+     arguments: :compose-desktop:buildExecutableJar
+```
+
+## Common Issues and Solutions
+
+### 1. JAR Only Works on Build Platform
+**Problem**: JAR only runs on the platform where it was built
+**Solution**: Ensure you're using explicit platform dependencies, not `compose.desktop.currentOs`
+
+### 2. Large JAR Size
+**Expected**: Cross-platform JARs will be ~90MB+ due to native libraries for all platforms
+**This is normal** and required for cross-platform compatibility
+
+### 3. Module Not Found Errors
+**Check**: Ensure the compose-desktop module name matches your project structure
+**Solution**: Adjust gradle task path (e.g., `:desktop:buildExecutableJar` vs `:compose-desktop:buildExecutableJar`)
+
+### 4. Main Class Not Found
+**Check**: Verify `main.kt` has a proper main function and `application.mainClass` is set correctly
+**Solution**: Ensure main function is at top level: `fun main() { ... }`
