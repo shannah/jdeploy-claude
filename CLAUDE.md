@@ -161,6 +161,7 @@ Create or modify `package.json` with required jDeploy configuration:
   "javaVersion": "21",
   "javafx": false,
   "title": "My Compose App",
+  "platformBundlesEnabled": true,
   "buildCommand": [
     "./gradlew",
     ":compose-desktop:buildExecutableJar"
@@ -450,6 +451,7 @@ Create or update `package.json` in the project root:
     "javaVersion": "21",
     "javafx": false,
     "title": "My Compose App",
+    "platformBundlesEnabled": true,
     "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar",
     "buildCommand": [
       "./gradlew",
@@ -551,3 +553,245 @@ For Compose projects, update your `.github/workflows/jdeploy.yml` build argument
 ### 4. Main Class Not Found
 **Check**: Verify `main.kt` has a proper main function and `application.mainClass` is set correctly
 **Solution**: Ensure main function is at top level: `fun main() { ... }`
+
+## Platform-Specific Bundles Configuration
+
+When `"platformBundlesEnabled": true` is set in package.json, jDeploy will create separate bundles for each platform (Windows, macOS, Linux) with optimized file sizes by excluding unnecessary native libraries for each platform.
+
+### .jdpignore Files Setup
+
+Create platform-specific `.jdpignore` files in your project root to exclude unnecessary native libraries from each platform bundle:
+
+#### .jdpignore (Global ignores for all platforms)
+```
+# Common recommended patterns for Global
+# JavaFX libraries - jDeploy provides JavaFX runtime
+javafx
+com/sun/javafx
+com/sun/glass
+com/sun/prism
+/glass.dll
+/libglass.dylib
+/libglass.so
+/prism_*.dll
+/libprism_*.dylib
+/libprism_*.so
+/javafx_*.dll
+/libjavafx_*.dylib
+/libjavafx_*.so
+```
+
+#### .jdpignore.linux-x64 (Linux x64 specific)
+```
+# Keep Linux x64 native libraries
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-linux-x64.so
+skiko-windows-*.dll
+libskiko-macos-*.dylib
+libskiko-linux-*.so
+skiko-*.dll
+libskiko-*.dylib
+libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Linux/x86_64
+org/sqlite/native
+
+# General native library patterns
+!*linux-x64*
+!*linux*x64*
+*win-x64*
+*win-arm64*
+*mac-x64*
+*mac-arm64*
+*linux-arm64*
+*windows*
+*.dll
+*macos*
+*darwin*
+*.dylib
+```
+
+#### .jdpignore.linux-arm64 (Linux ARM64 specific)
+```
+# Keep Linux ARM64 native libraries
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-linux-arm64.so
+skiko-windows-*.dll
+libskiko-macos-*.dylib
+libskiko-linux-*.so
+skiko-*.dll
+libskiko-*.dylib
+libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Linux/aarch64
+org/sqlite/native
+
+# General native library patterns
+!*linux-arm64*
+!*linux*arm64*
+*default*
+*mac-x64*
+*mac-arm64*
+*win-x64*
+*win-arm64*
+*linux-x64*
+*windows*
+*.dll
+*macos*
+*darwin*
+*.dylib
+```
+
+#### .jdpignore.mac-x64 (macOS Intel specific)
+```
+# Keep macOS Intel native libraries
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-macos-x64.dylib
+skiko-windows-*.dll
+libskiko-macos-*.dylib
+libskiko-linux-*.so
+skiko-*.dll
+libskiko-*.dylib
+libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Mac/x86_64
+org/sqlite/native
+
+# General native library patterns
+!*mac-x64*
+!*macos*x64*
+*win-x64*
+*win-arm64*
+*mac-arm64*
+*linux-x64*
+*linux-arm64*
+*windows*
+*.dll
+*linux*
+*.so
+```
+
+#### .jdpignore.mac-arm64 (macOS Apple Silicon specific)
+```
+# Keep macOS Silicon native libraries
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-macos-arm64.dylib
+skiko-windows-*.dll
+libskiko-macos-*.dylib
+libskiko-linux-*.so
+skiko-*.dll
+libskiko-*.dylib
+libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Mac/aarch64
+org/sqlite/native
+
+# General native library patterns
+!*mac-arm64*
+!*macos*arm64*
+*win-x64*
+*win-arm64*
+*mac-x64*
+*linux-x64*
+*linux-arm64*
+*windows*
+*.dll
+*linux*
+*.so
+```
+
+#### .jdpignore.win-x64 (Windows x64 specific)
+```
+# Keep Windows x64 native libraries
+# Skiko (Compose Multiplatform) native libraries
+!/skiko-windows-x64.dll
+skiko-windows-*.dll
+libskiko-macos-*.dylib
+libskiko-linux-*.so
+skiko-*.dll
+libskiko-*.dylib
+libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Windows/x86_64
+org/sqlite/native
+
+# General native library patterns
+!*win-x64*
+!*windows*x64*
+*win-arm64*
+*mac-x64*
+*mac-arm64*
+*linux-x64*
+*linux-arm64*
+*macos*
+*darwin*
+*.dylib
+*linux*
+*.so
+```
+
+#### .jdpignore.win-arm64 (Windows ARM64 specific)
+```
+# Keep Windows ARM64 native libraries
+# Skiko (Compose Multiplatform) native libraries
+!/skiko-windows-arm64.dll
+skiko-windows-*.dll
+libskiko-macos-*.dylib
+libskiko-linux-*.so
+skiko-*.dll
+libskiko-*.dylib
+libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Windows/aarch64
+org/sqlite/native
+
+# General native library patterns
+!*win-arm64*
+!*windows*arm64*
+*default*
+*mac-x64*
+*mac-arm64*
+*win-x64*
+*linux-x64*
+*linux-arm64*
+*macos*
+*darwin*
+*.dylib
+*linux*
+*.so
+```
+
+### .jdpignore Pattern Explanation
+
+- **`!pattern`**: Include files that match this pattern (overrides excludes)
+- **`pattern`**: Exclude files that match this pattern
+- **Lines starting with `#`**: Comments
+- **Platform-specific libraries**: Each `.jdpignore.platform` file keeps only the native libraries needed for that specific platform
+- **Compose Multiplatform**: The Skiko library provides platform-specific native rendering libraries
+- **SQLite**: If your app uses SQLite, platform-specific native libraries are included
+
+### Benefits of Platform-Specific Bundles
+
+1. **Smaller download sizes**: Each platform bundle only includes native libraries for that platform
+2. **Faster startup**: Fewer unnecessary files to process
+3. **Better user experience**: Users download only what they need for their platform
+4. **Automated deployment**: GitHub Actions can build all platform bundles automatically
+
+### Validation
+
+After setting up `.jdpignore` files:
+
+1. **Build and test locally**:
+   ```bash
+   ./gradlew :compose-desktop:buildExecutableJar
+   ```
+
+2. **Verify file sizes**: Platform-specific bundles should be significantly smaller than the full cross-platform JAR
+
+3. **Test on different platforms**: Ensure the application still runs correctly on each target platform
