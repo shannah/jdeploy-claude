@@ -551,3 +551,265 @@ For Compose projects, update your `.github/workflows/jdeploy.yml` build argument
 ### 4. Main Class Not Found
 **Check**: Verify `main.kt` has a proper main function and `application.mainClass` is set correctly
 **Solution**: Ensure main function is at top level: `fun main() { ... }`
+
+---
+
+# Platform-Specific Builds for Large Native Libraries
+
+For applications with large native libraries (like Compose Multiplatform, LWJGL, or SQLite native), you can configure platform-specific builds to reduce bundle sizes. This creates separate installers for each platform instead of one large cross-platform bundle.
+
+## When to Use Platform-Specific Builds
+
+Use platform-specific builds when:
+- Your JAR contains native libraries for multiple platforms
+- The cross-platform JAR is very large (>50MB)
+- You want to optimize download sizes for end users
+- You're using frameworks like Compose Multiplatform, LWJGL, or other native libraries
+
+## Configuration
+
+### Step 1: Enable Platform Bundles
+
+Add `platformBundlesEnabled: true` to your `package.json`:
+
+```json
+{
+  "jdeploy": {
+    "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar",
+    "javaVersion": "21",
+    "javafx": false,
+    "title": "My Compose App",
+    "platformBundlesEnabled": true,
+    "buildCommand": [
+      "./gradlew",
+      ":compose-desktop:buildExecutableJar"
+    ]
+  }
+}
+```
+
+### Step 2: Create Platform-Specific .jdpignore Files
+
+Create `.jdpignore.<platform>` files in your project root to exclude unnecessary native libraries for each platform:
+
+**`.jdpignore.linux-x64`**
+```
+# Common recommended patterns for Linux x64
+# Generated on Sat Sep 20 06:21:14 PDT 2025
+# Keep Linux x64 native libraries
+
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-linux-x64.so
+/skiko-windows-*.dll
+/libskiko-macos-*.dylib
+/libskiko-linux-*.so
+/skiko-*.dll
+/libskiko-*.dylib
+/libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Linux/x86_64
+/org/sqlite/native
+
+# LWJGL native libraries
+/macos
+/windows
+/linux
+!/linux/x64
+**gdx*.dll
+**libgdx*.so
+/libgdx*.dylib
+!/libgdx64.so
+```
+
+**`.jdpignore.linux-arm64`**
+```
+# Common recommended patterns for Linux ARM
+# Generated on Sat Sep 20 06:21:18 PDT 2025
+# Keep Linux ARM64 native libraries
+
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-linux-arm64.so
+/skiko-windows-*.dll
+/libskiko-macos-*.dylib
+/libskiko-linux-*.so
+/skiko-*.dll
+/libskiko-*.dylib
+/libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Linux/aarch64
+/org/sqlite/native
+
+# LWJGL native libraries
+/macos
+/windows
+/linux
+!/linux/arm64
+**gdx*.dll
+**libgdx*.so
+/libgdx*.dylib
+!/libgdxarm64.so
+```
+
+**`.jdpignore.mac-x64`**
+```
+# Common recommended patterns for macOS Intel
+# Generated on Sat Sep 20 06:21:02 PDT 2025
+# Keep macOS Intel native libraries
+
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-macos-x64.dylib
+/skiko-windows-*.dll
+/libskiko-macos-*.dylib
+/libskiko-linux-*.so
+/skiko-*.dll
+/libskiko-*.dylib
+/libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Mac/x86_64
+/org/sqlite/native
+
+# LWJGL native libraries
+/linux
+/windows
+/macos/arm64
+**gdx*.dll
+**libgdx*.so
+/libgdxarm64.dylib
+```
+
+**`.jdpignore.mac-arm64`**
+```
+# Common recommended patterns for macOS Silicon
+# Generated on Sat Sep 20 06:21:07 PDT 2025
+# Keep macOS Silicon native libraries
+
+# Skiko (Compose Multiplatform) native libraries
+!/libskiko-macos-arm64.dylib
+/skiko-windows-*.dll
+/libskiko-macos-*.dylib
+/libskiko-linux-*.so
+/skiko-*.dll
+/libskiko-*.dylib
+/libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Mac/aarch64
+/org/sqlite/native
+
+# LWJGL native libraries
+/linux
+/windows
+/macos/x64
+**gdx*.dll
+**libgdx*.so
+/libgdx64.dylib
+```
+
+**`.jdpignore.win-x64`**
+```
+# Common recommended patterns for Windows x64
+# Generated on Sat Sep 20 06:21:11 PDT 2025
+# Keep Windows x64 native libraries
+
+# Skiko (Compose Multiplatform) native libraries
+!/skiko-windows-x64.dll
+/skiko-windows-*.dll
+/libskiko-macos-*.dylib
+/libskiko-linux-*.so
+/skiko-*.dll
+/libskiko-*.dylib
+/libskiko-*.so
+
+# SQLite native libraries
+!/org/sqlite/native/Windows/x86_64
+/org/sqlite/native
+
+# LWJGL native libraries
+/linux
+/macos
+/windows/arm64
+/windows/x86
+/gdx.dll
+**libgdx*.so
+**libgdx*.dylib
+```
+
+### Step 3: Understanding .jdpignore Patterns
+
+The .jdpignore files use gitignore-style patterns:
+- `/path`: Exclude this specific path
+- `!/path`: Include this path (override exclusion)
+- `**pattern`: Recursive wildcard matching
+- `*.extension`: File extension matching
+
+**Pattern Logic**:
+1. Start with broad exclusions (e.g., `/org/sqlite/native` excludes all SQLite natives)
+2. Add specific inclusions for the target platform (e.g., `!/org/sqlite/native/Linux/x86_64`)
+3. This results in only the platform-specific libraries being included
+
+## Benefits
+
+### Size Reduction:
+- **Before**: Single 90MB+ cross-platform JAR
+- **After**: Platform-specific JARs of ~30MB each
+
+### Platforms Supported:
+- `linux-x64`: Linux on x86_64
+- `linux-arm64`: Linux on ARM64 
+- `mac-x64`: macOS on Intel
+- `mac-arm64`: macOS on Apple Silicon
+- `win-x64`: Windows on x86_64
+
+## Build Process
+
+When `platformBundlesEnabled: true` is set:
+
+1. jDeploy builds the full cross-platform JAR first
+2. For each supported platform, it creates a filtered JAR using the corresponding `.jdpignore` file
+3. Separate installers are generated for each platform
+4. Users download only the installer for their specific platform
+
+## Validation
+
+After setting up platform-specific builds:
+
+1. **Check .jdpignore files exist**:
+   ```bash
+   ls -la .jdpignore.*
+   ```
+
+2. **Verify patterns are working** (during build):
+   - Check that platform-specific JARs are smaller than the original
+   - Verify each platform JAR contains only its native libraries
+
+3. **Test platform-specific JARs**:
+   ```bash
+   # Extract and check contents
+   jar -tf filtered-jar-for-platform.jar | grep -E "\.(so|dll|dylib)$"
+   ```
+
+## Common Libraries Supported
+
+The provided .jdpignore patterns handle:
+- **Skiko**: Compose Multiplatform's native rendering
+- **SQLite**: Native database libraries
+- **LWJGL**: Lightweight Java Game Library
+- **libGDX**: Game development framework
+
+## Customization
+
+To add support for other native libraries:
+
+1. Identify the library's native file patterns in your JAR
+2. Add exclusion rules for all platforms: `/library/path`
+3. Add inclusion rules for target platform: `!/library/path/platform-specific`
+
+Example for a custom library:
+```
+# MyCustomLib native libraries
+!/mycustomlib/native/linux-x64
+/mycustomlib/native
+```
