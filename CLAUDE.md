@@ -267,10 +267,10 @@ jobs:
 
       steps:
          - uses: actions/checkout@v3
-         - name: Set up JDK 21
+         - name: Set up JDK
            uses: actions/setup-java@v3
            with:
-              java-version: '21'
+              java-version: '21'  # Match this to your project's Java version
               distribution: 'temurin'
          - name: Make gradlew executable
            run: chmod +x ./gradlew
@@ -331,7 +331,10 @@ jobs:
    ./gradlew -version  # For Gradle projects
    mvn -version        # For Maven projects
    ```
-   **IMPORTANT**: Update `jdeploy.javaVersion` in package.json to match your project's Java version
+   **IMPORTANT**: If the project uses an older version of Java or Gradle than your system version, DO NOT upgrade the project's Java or Gradle version. Instead:
+   - Use the project's existing Java version in `jdeploy.javaVersion` in package.json
+   - Use the project's existing Java version in the GitHub workflow
+   - Let the project's gradle wrapper (`./gradlew`) or Maven wrapper (`./mvnw`) handle the build tool version
 
 2. **Build the Java project:**
    - Maven: `mvn clean package`
