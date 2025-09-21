@@ -86,7 +86,28 @@ If the project already produces a shaded JAR, that's acceptable:
 **Maven (maven-shade-plugin):** Keep existing configuration
 **Gradle (shadow plugin):** Keep existing configuration
 
-## 3. Configure package.json
+## 3. Detect JavaFX Usage
+
+Before configuring package.json, check if the project uses JavaFX:
+
+### Check for JavaFX Imports
+
+Search for JavaFX imports in the source code to determine if the project uses JavaFX:
+
+```bash
+# For Maven projects
+grep -r "import javafx\." src/ --include="*.java" 2>/dev/null | head -5
+
+# For Gradle projects
+find . -name "*.java" -o -name "*.kt" | xargs grep "import javafx\." 2>/dev/null | head -5
+
+# Alternative using ripgrep (if available)
+rg "import javafx\." --type java --type kotlin
+```
+
+If any JavaFX imports are found (e.g., `import javafx.application.Application`, `import javafx.scene.Scene`, etc.), then set `"javafx": true` in the package.json configuration. Otherwise, set it to `false` or omit it.
+
+## 4. Configure package.json
 
 Create or modify `package.json` with required jDeploy configuration:
 
@@ -187,8 +208,9 @@ Create or modify `package.json` with required jDeploy configuration:
 - `jdeploy.javafx`: Set to true for JavaFX apps (default: false)
 - `jdeploy.args`: Array of JVM arguments
 - `jdeploy.buildCommand`: Array of command arguments to build the project automatically before publishing. Only add this if the user explicitly requests automatic builds on publish
+- `jdeploy.platformBundlesEnabled`: Set to false by default. Only set to true when the JAR contains large native libraries (>50MB total) for multiple platforms (like Compose Multiplatform, LWJGL, SQLite). This creates platform-specific installers to reduce download sizes
 
-## 4. Find and Configure Application Icon
+## 5. Find and Configure Application Icon
 
 jDeploy uses an `icon.png` file in the project root (same directory as `package.json`) for the application icon.
 
@@ -251,7 +273,7 @@ After copying, verify the icon:
 - Is square: `file icon.png` (check dimensions)
 - Reasonable size: Should be at least 64x64, preferably 256x256 or larger
 
-## 5. Optional: GitHub Workflows for App Bundles
+## 6. Optional: GitHub Workflows for App Bundles
 
 Create `.github/workflows/jdeploy.yml`:
 
@@ -330,7 +352,7 @@ jobs:
 
 ```
 
-## 6. Build and Validation Steps
+## 7. Build and Validation Steps
 
 1. **Verify Java version compatibility:**
    ```bash
@@ -566,11 +588,14 @@ For applications with large native libraries (like Compose Multiplatform, LWJGL,
 
 ## When to Use Platform-Specific Builds
 
-Use platform-specific builds when:
-- Your JAR contains native libraries for multiple platforms
-- The cross-platform JAR is very large (>50MB)
-- You want to optimize download sizes for end users
-- You're using frameworks like Compose Multiplatform, LWJGL, or other native libraries
+**IMPORTANT**: Platform-specific builds should ONLY be used when there is a significant size benefit.
+
+DO NOT use platform-specific builds (`platformBundlesEnabled: true`) unless:
+- Your JAR contains native libraries for multiple platforms AND
+- The cross-platform JAR is very large (>50MB) AND
+- Platform-specific builds would reduce the size by at least 50%
+
+For most Java applications, including standard JavaFX apps or simple Compose apps, keep `platformBundlesEnabled: false` (or omit it entirely as false is the default).
 
 ## Configuration
 
