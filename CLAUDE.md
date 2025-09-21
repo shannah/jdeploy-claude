@@ -104,11 +104,7 @@ Create or modify `package.json` with required jDeploy configuration:
       "javaVersion": "21",
       "jar": "build/libs/{{ artifactId }}-1.0.0.jar",
       "javafx": true,
-      "title": "{{ appTitle }}",
-      "buildCommand": [
-         "./gradlew",
-         "buildExecutableJar"
-      ]
+      "title": "{{ appTitle }}"
    },
    "dependencies": {
       "command-exists-promise": "^2.0.2",
@@ -160,6 +156,16 @@ Create or modify `package.json` with required jDeploy configuration:
   "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar",
   "javaVersion": "21",
   "javafx": false,
+  "title": "My Compose App"
+}
+```
+
+**With Automatic Build (if requested by user):**
+```json
+"jdeploy": {
+  "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar",
+  "javaVersion": "21",
+  "javafx": false,
   "title": "My Compose App",
   "buildCommand": [
     "./gradlew",
@@ -180,6 +186,7 @@ Create or modify `package.json` with required jDeploy configuration:
 - `jdeploy.jdk`: Set to true if full JDK required (default: false)
 - `jdeploy.javafx`: Set to true for JavaFX apps (default: false)
 - `jdeploy.args`: Array of JVM arguments
+- `jdeploy.buildCommand`: Array of command arguments to build the project automatically before publishing. Only add this if the user explicitly requests automatic builds on publish
 
 ## 4. Find and Configure Application Icon
 
@@ -453,11 +460,7 @@ Create or update `package.json` in the project root:
     "javaVersion": "21",
     "javafx": false,
     "title": "My Compose App",
-    "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar",
-    "buildCommand": [
-      "./gradlew",
-      ":compose-desktop:buildExecutableJar"
-    ]
+    "jar": "compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar"
   },
   "dependencies": {
     "command-exists-promise": "^2.0.2",
@@ -582,11 +585,7 @@ Add `platformBundlesEnabled: true` to your `package.json`:
     "javaVersion": "21",
     "javafx": false,
     "title": "My Compose App",
-    "platformBundlesEnabled": true,
-    "buildCommand": [
-      "./gradlew",
-      ":compose-desktop:buildExecutableJar"
-    ]
+    "platformBundlesEnabled": true
   }
 }
 ```
