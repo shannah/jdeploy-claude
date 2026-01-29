@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Minimal jDeploy project configuration.
+  Only required elements are specified.
+-->
+<jdeploy-project xmlns="https://www.jdeploy.com/schema/1.0">
+  <name>my-app</name>
+  <version>1.0.0</version>
+
+  <bin>
+    <command name="my-app" script="jdeploy-bundle/jdeploy.js"/>
+  </bin>
+
+  <jdeploy>
+    <jar>target/my-app-1.0.0.jar</jar>
+    <java-version>21</java-version>
+    <title>My App</title>
+  </jdeploy>
+</jdeploy-project>

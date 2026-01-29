@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sample jDeploy project configuration in XML format.
+  This example exercises all available configuration options.
+
+  Equivalent package.json is shown in comments for reference.
+-->
+<jdeploy-project xmlns="https://www.jdeploy.com/schema/1.0"
+                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xsi:schemaLocation="https://www.jdeploy.com/schema/1.0 jdeploy-project.xsd">
+
+  <!-- NPM Package Metadata -->
+  <name>my-awesome-app</name>
+  <version>2.1.0</version>
+  <description>A feature-rich desktop application built with Java</description>
+  <author>Jane Developer</author>
+  <license>MIT</license>
+  <repository>https://github.com/janedev/my-awesome-app</repository>
+  <homepage>https://myawesomeapp.com</homepage>
+  <prefer-global>true</prefer-global>
+  <main>index.js</main>
+
+  <!-- CLI commands: { "myapp": "jdeploy-bundle/jdeploy.js" } -->
+  <bin>
+    <command name="myapp" script="jdeploy-bundle/jdeploy.js"/>
+  </bin>
+
+  <!-- NPM dependencies -->
+  <dependencies>
+    <dependency name="command-exists-promise" version="^2.0.2"/>
+    <dependency name="node-fetch" version="2.6.7"/>
+    <dependency name="tar" version="^4.4.8"/>
+    <dependency name="yauzl" version="^2.10.0"/>
+    <dependency name="shelljs" version="^0.8.4"/>
+  </dependencies>
+
+  <!-- NPM "files" array -->
+  <npm-files>
+    <file>jdeploy-bundle</file>
+  </npm-files>
+
+  <!-- NPM scripts -->
+  <scripts>
+    <script name="test" command="echo &quot;Error: no test specified&quot; &amp;&amp; exit 1"/>
+  </scripts>
+
+  <!-- jDeploy Configuration -->
+  <jdeploy>
+
+    <!-- Application artifact -->
+    <jar>target/my-awesome-app-2.1.0.jar</jar>
+    <main-class>com.example.myapp.Main</main-class>
+    <title>My Awesome App</title>
+    <display-name>My Awesome App</display-name>
+
+    <!-- Java runtime -->
+    <java-version>21</java-version>
+    <jdk>false</jdk>
+    <javafx>true</javafx>
+    <javafx-version>21.0.2</javafx-version>
+    <jdk-provider>zulu</jdk-provider>
+    <bundle-jvm>false</bundle-jvm>
+    <strip-javafx-files>true</strip-javafx-files>
+
+    <!-- Build command: ["mvn", "clean", "package", "-DskipTests"] -->
+    <build-command>
+      <arg>mvn</arg>
+      <arg>clean</arg>
+      <arg>package</arg>
+      <arg>-DskipTests</arg>
+    </build-command>
+
+    <!-- Runtime arguments with platform conditions and placeholders -->
+    <args>
+      <arg>-Xmx2G</arg>
+      <arg>-Xms512m</arg>
+      <arg>-X[mac]ms1G</arg>
+      <arg>-Dmyapp.config={{ user.home }}/.myapp/config.json</arg>
+      <arg>-D[mac]apple.laf.useScreenMenuBar=true</arg>
+      <arg>-D[win|linux]myapp.data={{ user.home }}/.myapp</arg>
+      <arg>--gui</arg>
+    </args>
+
+    <!-- Config files -->
+    <config-file>config/runtime-args.json</config-file>
+    <config-file-mac>config/runtime-args-mac.json</config-file-mac>
+    <config-file-win>config/runtime-args-win.json</config-file-win>
+    <config-file-linux>config/runtime-args-linux.json</config-file-linux>
+
+    <!-- Application behavior -->
+    <singleton>false</singleton>
+    <fork>false</fork>
+    <run-as-administrator>allowed</run-as-administrator>
+    <prune-old-versions>true</prune-old-versions>
+    <prerelease>false</prerelease>
+    <port>0</port>
+
+    <!-- macOS configuration -->
+    <mac-app-bundle-id>com.example.myawesomeapp</mac-app-bundle-id>
+    <codesign>true</codesign>
+    <notarize>true</notarize>
+    <sign-package>false</sign-package>
+
+    <!-- Version compatibility -->
+    <jdeploy-version>5.5.3</jdeploy-version>
+    <min-launcher-initial-app-version>2.0.0</min-launcher-initial-app-version>
+
+    <!-- Build hooks -->
+    <hooks>
+      <ant-file>build.xml</ant-file>
+      <pre-copy-target>prepare-resources</pre-copy-target>
+      <post-copy-target>finalize-bundle</post-copy-target>
+      <pre-copy-script>scripts/pre-copy.sh</pre-copy-script>
+      <post-copy-script>scripts/post-copy.sh</post-copy-script>
+    </hooks>
+
+    <!-- Copy rules for additional files -->
+    <copy-rules>
+      <copy-rule>
+        <dir>native-libs</dir>
+        <includes>
+          <pattern>**/*.dll</pattern>
+          <pattern>**/*.so</pattern>
+          <pattern>**/*.dylib</pattern>
+        </includes>
+      </copy-rule>
+      <copy-rule>
+        <dir>config</dir>
+        <includes>
+          <pattern>**/*.json</pattern>
+          <pattern>**/*.properties</pattern>
+        </includes>
+        <excludes>
+          <pattern>**/*.bak</pattern>
+        </excludes>
+      </copy-rule>
+    </copy-rules>
+
+    <!-- Document type associations -->
+    <document-types>
+      <!-- File association: text files -->
+      <document-type>
+        <extension>txt</extension>
+        <mimetype>text/plain</mimetype>
+        <editor>true</editor>
+      </document-type>
+      <!-- File association: custom project files -->
+      <document-type>
+        <extension>myproj</extension>
+        <mimetype>application/x-myproject</mimetype>
+        <editor>true</editor>
+        <custom>true</custom>
+      </document-type>
+      <!-- Directory association -->
+      <document-type>
+        <type>directory</type>
+        <role>Editor</role>
+        <description>Open as Project</description>
+        <icon>icons/folder-icon.png</icon>
+      </document-type>
+    </document-types>
+
+    <!-- URL schemes -->
+    <url-schemes>
+      <url-scheme>myapp</url-scheme>
+      <url-scheme>myapp-debug</url-scheme>
+    </url-schemes>
+
+    <!-- macOS permissions -->
+    <permissions>
+      <permission>
+        <name>camera</name>
+        <description>Camera access needed for video capture feature</description>
+      </permission>
+      <permission>
+        <name>microphone</name>
+        <description>Microphone access needed for audio recording</description>
+      </permission>
+      <permission>
+        <name>documents_folder</name>
+        <description>Access to Documents folder for file management</description>
+      </permission>
+    </permissions>
+
+    <!-- CLI commands -->
+    <commands>
+      <command name="myapp">
+        <description>Launch the main application GUI</description>
+        <args>
+          <arg>-Xmx2G</arg>
+          <arg>--gui</arg>
+          <arg>$@</arg>
+        </args>
+        <implements>
+          <capability>launcher</capability>
+        </implements>
+        <embed-plist>true</embed-plist>
+      </command>
+      <command name="myapp-cli">
+        <description>Run CLI operations</description>
+        <args>
+          <arg>-Xmx512m</arg>
+          <arg>--headless</arg>
+          <arg>$@</arg>
+        </args>
+      </command>
+      <command name="myapp-service">
+        <description>Manage the background service</description>
+        <implements>
+          <capability>service_controller</capability>
+          <capability>updater</capability>
+        </implements>
+      </command>
+    </commands>
+
+    <!-- System tray helper -->
+    <helper>
+      <action>
+        <label>Open Dashboard</label>
+        <description>Launch the application dashboard in your browser</description>
+        <url>https://dashboard.myawesomeapp.com</url>
+      </action>
+      <action>
+        <label>Settings</label>
+        <url>myapp://settings</url>
+      </action>
+      <action>
+        <label>View Logs</label>
+        <description>Open the application log directory</description>
+        <url>/var/log/myapp</url>
+      </action>
+    </helper>
+
+    <!-- Publish targets -->
+    <publish-targets>
+      <publish-target>
+        <name>npm: my-awesome-app</name>
+        <type>NPM</type>
+        <url>my-awesome-app</url>
+        <is-default>true</is-default>
+      </publish-target>
+      <publish-target>
+        <name>github: releases</name>
+        <type>GITHUB</type>
+        <url>https://github.com/janedev/my-awesome-app</url>
+      </publish-target>
+    </publish-targets>
+
+    <!-- Download page -->
+    <download-page>
+      <platform>windows-x64</platform>
+      <platform>mac-x64</platform>
+      <platform>mac-arm64</platform>
+      <platform>linux-x64</platform>
+    </download-page>
+
+    <!-- Bundle and installer targets -->
+    <bundles>
+      <platform>mac-x64</platform>
+      <platform>mac-arm64</platform>
+      <platform>win-x64</platform>
+      <platform>linux-x64</platform>
+    </bundles>
+
+    <installers>
+      <platform>mac-x64</platform>
+      <platform>mac-arm64</platform>
+      <platform>win-x64</platform>
+      <platform>linux-x64</platform>
+    </installers>
+
+    <generate-legacy-bundles>false</generate-legacy-bundles>
+
+    <!-- Platform-specific bundles (for large native library apps) -->
+    <platform-bundles>
+      <enabled>true</enabled>
+      <fallback-to-universal>false</fallback-to-universal>
+      <packages>
+        <package platform="mac-x64">my-awesome-app-mac-x64</package>
+        <package platform="mac-arm64">my-awesome-app-mac-arm64</package>
+        <package platform="win-x64">my-awesome-app-win-x64</package>
+        <package platform="linux-x64">my-awesome-app-linux-x64</package>
+        <package platform="linux-arm64">my-awesome-app-linux-arm64</package>
+      </packages>
+    </platform-bundles>
+
+    <!-- Custom home directories -->
+    <home-directories>
+      <default>{{ user.home }}/.myapp</default>
+      <mac>{{ user.home }}/Library/Application Support/MyApp</mac>
+      <windows>{{ user.home }}/AppData/Local/MyApp</windows>
+      <linux>{{ user.home }}/.local/share/myapp</linux>
+    </home-directories>
+
+    <jdeploy-registry-url>https://registry.mycompany.com</jdeploy-registry-url>
+
+    <!-- Maven dependencies -->
+    <maven-dependencies>
+      <dependency>org.openjfx:javafx-controls:21</dependency>
+      <dependency>org.openjfx:javafx-fxml:21</dependency>
+    </maven-dependencies>
+
+    <!-- File checksums (auto-managed) -->
+    <checksums>
+      <checksum file="icon.png" hash="a1b2c3d4e5f6"/>
+      <checksum file="installsplash.png" hash="f6e5d4c3b2a1"/>
+    </checksums>
+
+    <!-- CheerpJ web deployment (experimental) -->
+    <cheerpj>
+      <enabled>false</enabled>
+      <github-pages>
+        <enabled>true</enabled>
+        <branch>gh-pages</branch>
+        <path>app</path>
+        <branch-path>branches/{{ branch }}</branch-path>
+        <tag-path>releases/{{ tag }}</tag-path>
+      </github-pages>
+    </cheerpj>
+
+  </jdeploy>
+
+</jdeploy-project>

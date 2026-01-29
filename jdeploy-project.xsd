@@ -1,0 +1,1812 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:jd="https://www.jdeploy.com/schema/1.0"
+           targetNamespace="https://www.jdeploy.com/schema/1.0"
+           elementFormDefault="qualified">
+
+  <xs:annotation>
+    <xs:documentation>
+      jDeploy Project Configuration Schema v1.0
+
+      This schema defines the XML configuration format for jDeploy projects.
+      It provides a 1:1 mapping to the package.json format used by jDeploy,
+      with self-documenting element names and annotations.
+
+      Root element: jdeploy-project
+      Namespace: https://www.jdeploy.com/schema/1.0
+
+      JSON property names use camelCase; XML element names use kebab-case.
+      See individual element annotations for the exact JSON property mapping.
+    </xs:documentation>
+  </xs:annotation>
+
+  <!-- ===================================================================== -->
+  <!-- ROOT ELEMENT                                                          -->
+  <!-- ===================================================================== -->
+
+  <xs:element name="jdeploy-project" type="jd:JdeployProjectType">
+    <xs:annotation>
+      <xs:documentation>
+        Root element for a jDeploy project configuration file.
+        Maps to the top-level package.json object.
+      </xs:documentation>
+    </xs:annotation>
+  </xs:element>
+
+  <!-- ===================================================================== -->
+  <!-- TOP-LEVEL PROJECT TYPE                                                -->
+  <!-- ===================================================================== -->
+
+  <xs:complexType name="JdeployProjectType">
+    <xs:annotation>
+      <xs:documentation>
+        The top-level project configuration, combining standard NPM package
+        metadata with jDeploy-specific settings.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <!-- === NPM Package Metadata === -->
+
+      <xs:element name="name" type="jd:NpmPackageNameType">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "name"
+            Required. Unique NPM package name. This is the name users install
+            with "npm install -g". Must be lowercase, may contain hyphens and dots.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="version" type="jd:SemVerType">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "version"
+            Required. Semantic version string (e.g., "1.0.0").
+            Increment when publishing new versions.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="description" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "description"
+            Optional. Human-readable description of the application.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="author" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "author"
+            Optional. Author or developer name.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="license" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "license"
+            Optional. SPDX license identifier (e.g., "MIT", "ISC", "Apache-2.0").
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="repository" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "repository"
+            Optional. URL to the source code repository (e.g., GitHub URL).
+            Shown to users during npm installation.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="homepage" type="xs:anyURI" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "homepage"
+            Optional. URL to the project homepage.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="prefer-global" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "preferGlobal"
+            Optional. If true, npm warns when installed locally instead of globally.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="main" type="xs:string" minOccurs="0" default="index.js">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "main"
+            Optional. NPM entry point. Typically unused for jDeploy apps.
+            Default: "index.js".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Bin Commands === -->
+
+      <xs:element name="bin" type="jd:BinType">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "bin"
+            Required. Maps CLI command names to their entry point scripts.
+            At least one command must point to "jdeploy-bundle/jdeploy.js".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === NPM Dependencies === -->
+
+      <xs:element name="dependencies" type="jd:DependenciesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "dependencies"
+            NPM package dependencies. Must include "shelljs": "^0.8.4" at minimum.
+            Typical jDeploy apps also include command-exists-promise, node-fetch, tar, yauzl.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === NPM Files === -->
+
+      <xs:element name="npm-files" type="jd:NpmFilesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "files"
+            Optional. List of files/directories to include in the npm package.
+            Should include "jdeploy-bundle".
+            Named "npm-files" in XML to avoid collision with jdeploy copy-rules.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === NPM Scripts === -->
+
+      <xs:element name="scripts" type="jd:ScriptsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "scripts"
+            Optional. NPM lifecycle scripts (e.g., test, build).
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === jDeploy Configuration === -->
+
+      <xs:element name="jdeploy" type="jd:JdeployConfigType">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdeploy"
+            Required. The jDeploy-specific configuration block containing
+            all settings for Java application packaging and distribution.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- ===================================================================== -->
+  <!-- jDEPLOY CONFIGURATION TYPE                                            -->
+  <!-- ===================================================================== -->
+
+  <xs:complexType name="JdeployConfigType">
+    <xs:annotation>
+      <xs:documentation>
+        The jDeploy-specific configuration. Maps to the "jdeploy" object in package.json.
+        Contains settings for Java runtime, build, packaging, and distribution.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <!-- === Application Artifact === -->
+
+      <xs:element name="jar" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jar"
+            Path to the executable JAR file, relative to the project root.
+            Supports glob wildcards (* and ?). Mutually exclusive with "war".
+            Examples: "target/myapp-1.0.jar", "build/libs/myapp-*-all.jar"
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="war" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "war"
+            Path to WAR file or web application directory.
+            Supports glob patterns. Mutually exclusive with "jar".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="main-class" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "mainClass"
+            Fully qualified main class name (e.g., "com.example.Main").
+            Overrides the Main-Class manifest attribute in the JAR.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="class-path" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "classPath"
+            Custom classpath to use when launching the application.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="title" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "title"
+            Human-readable application title. Used on download page,
+            in menus, and in the installer. Falls back to a modified
+            version of the package name if not specified.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="display-name" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "displayName"
+            Alternative display name for the application.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Java Runtime === -->
+
+      <xs:element name="java-version" type="xs:string" minOccurs="0" default="17">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "javaVersion"
+            Major Java version required (e.g., "8", "11", "17", "21").
+            Must be a string containing only the major version number.
+            Default: "17".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="jdk" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdk"
+            Whether a full JDK is required instead of a JRE.
+            Set to true only if the app needs javac or other JDK-specific tools.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="javafx" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "javafx"
+            Whether the application requires JavaFX runtime modules.
+            Set to true if source code contains "import javafx." statements.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="javafx-version" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "javafxVersion"
+            Specific JavaFX version to use. If omitted, uses the version
+            bundled with the ZuluFX distribution.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="jdk-provider" type="jd:JdkProviderType" minOccurs="0" default="zulu">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdkProvider"
+            JDK distribution provider. Default: "zulu".
+            Since jDeploy v5.4.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="jbr-variant" type="jd:JbrVariantType" minOccurs="0" default="standard">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jbrVariant"
+            JetBrains Runtime variant. Only used when jdk-provider is "jbr".
+            The "jcef" variant includes embedded Chromium browser support.
+            Default: "standard".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="bundle-jvm" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "bundleJVM"
+            Whether to include a bundled JVM in the distribution.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="strip-javafx-files" type="xs:boolean" minOccurs="0" default="true">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "stripJavaFXFiles"
+            Whether to strip JavaFX files from the JAR when the server
+            provides JavaFX runtime separately. Default: true.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Build Configuration === -->
+
+      <xs:element name="build-command" type="jd:StringListType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "buildCommand"
+            Command to build the project before packaging, specified as an
+            array of arguments. Only add if automatic build-on-publish is desired.
+            Examples: ["mvn", "package"] or ["./gradlew", "build"]
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Runtime Configuration === -->
+
+      <xs:element name="args" type="jd:ArgsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "args"
+            Runtime arguments passed to the JVM and application. Supports:
+            - JVM options: -Xmx2G, -Xms512m
+            - System properties: -Dmyapp.setting=value
+            - Program arguments: --verbose, --config=path
+            - Platform conditions: -X[mac]ms2G, -D[win|linux]prop=val
+            - Placeholders: {{ user.home }}, {{ exe.dir }}, {{ app.path }}
+            - Dynamic expressions: {{ env.VAR }}, {{ path(...) }}, {{ if ... }}
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="config-file" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "configFile"
+            Path to a JSON file containing additional runtime arguments.
+            Supports placeholders. Arguments are appended after args from package.json.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="config-file-mac" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "configFileMac"
+            macOS-specific config file. Takes precedence over config-file on macOS.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="config-file-win" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "configFileWin"
+            Windows-specific config file. Takes precedence over config-file on Windows.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="config-file-linux" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "configFileLinux"
+            Linux-specific config file. Takes precedence over config-file on Linux.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="port" type="xs:nonNegativeInteger" minOccurs="0" default="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "port"
+            Port for WAR deployments (Jetty server). 0 = random open port.
+            Can be overridden at runtime via -Djdeploy.port, -Dport, or PORT env var.
+            Default: 0.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Application Behavior === -->
+
+      <xs:element name="singleton" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "singleton"
+            If true, only one instance of the application can run at a time.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="fork" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "fork"
+            Whether to fork the application process.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="run-as-administrator" type="jd:RunAsAdministratorType" minOccurs="0" default="disabled">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "runAsAdministrator"
+            Elevated privilege configuration.
+            Default: "disabled".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="prune-old-versions" type="xs:boolean" minOccurs="0" default="true">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "pruneOldVersions"
+            Whether to delete old app versions during updates.
+            Set to false to keep old versions on disk. Since v5.1.1.
+            Default: true.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="prerelease" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "prerelease"
+            Whether this version is a prerelease.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === macOS Configuration === -->
+
+      <xs:element name="mac-app-bundle-id" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "macAppBundleId"
+            macOS application bundle identifier (e.g., "com.example.myapp").
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="codesign" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "codesign"
+            Whether to code-sign the macOS application bundle.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="notarize" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "notarize"
+            Whether to notarize the macOS application with Apple.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="sign-package" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "signPackage"
+            Whether to sign the distribution package.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Version and Compatibility === -->
+
+      <xs:element name="jdeploy-version" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdeployVersion"
+            Specific jDeploy version to use for building bundles/installers.
+            If omitted, uses the latest version.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="min-launcher-initial-app-version" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "minLauncherInitialAppVersion"
+            Minimum launcher version required. Older launchers prompt users
+            to update. Since v5.5.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Build Hooks === -->
+
+      <xs:element name="hooks" type="jd:HooksType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            Pre/post build hooks for the jDeploy packaging process.
+            Maps to the flat properties: antFile, preCopyTarget, postCopyTarget,
+            preCopyScript, postCopyScript in the JSON "jdeploy" object.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Copy Rules === -->
+
+      <xs:element name="copy-rules" type="jd:CopyRulesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "files"
+            Rules for copying additional files into the jdeploy-bundle.
+            By default, the JAR and its classpath files are copied.
+            Named "copy-rules" in XML to avoid collision with npm-files.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Document Types === -->
+
+      <xs:element name="document-types" type="jd:DocumentTypesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "documentTypes"
+            File and directory associations. Registers the application
+            to handle specific file types and/or directories.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === URL Schemes === -->
+
+      <xs:element name="url-schemes" type="jd:UrlSchemesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "urlSchemes"
+            Custom URL protocol schemes the app can handle.
+            Users can launch the app via links like "myapp://action".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Permissions === -->
+
+      <xs:element name="permissions" type="jd:PermissionsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "permissions"
+            System resource permissions the application requires (primarily macOS).
+            Each permission includes a name and a user-facing description.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Commands === -->
+
+      <xs:element name="commands" type="jd:CommandsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "commands"
+            CLI commands and service definitions for the application.
+            Each command has a name, optional description, args, and capabilities.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Helper === -->
+
+      <xs:element name="helper" type="jd:HelperType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "helper"
+            System tray helper configuration with custom menu actions.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Publish Targets === -->
+
+      <xs:element name="publish-targets" type="jd:PublishTargetsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "publishTargets"
+            Distribution targets for publishing the application
+            (NPM, GitHub, GitLab, S3, etc.).
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Download Page === -->
+
+      <xs:element name="download-page" type="jd:DownloadPageType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "downloadPage"
+            Configuration for the jdeploy.com download page.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Bundle and Installer Targets === -->
+
+      <xs:element name="bundles" type="jd:PlatformListType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "bundles"
+            Platforms to build executable bundles for locally.
+            Bundles are created in jdeploy/bundles/.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="installers" type="jd:PlatformListType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "installers"
+            Platforms to build installers for locally.
+            Installers are created in jdeploy/installers/.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="generate-legacy-bundles" type="xs:boolean" minOccurs="0" default="true">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "generateLegacyBundles"
+            Whether to generate legacy Windows/Linux x64 bundle names.
+            Default: true.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Platform-Specific Bundles === -->
+
+      <xs:element name="platform-bundles" type="jd:PlatformBundlesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            Platform-specific bundle configuration for reducing download sizes.
+            Maps to the flat JSON properties: platformBundlesEnabled,
+            fallbackToUniversal, packageMacX64, packageMacArm64, etc.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Home Directories === -->
+
+      <xs:element name="home-directories" type="jd:HomeDirectoriesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            Custom jDeploy home directory overrides per platform.
+            Maps to: jdeployHome, jdeployHomeMac, jdeployHomeWindows, jdeployHomeLinux.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="jdeploy-registry-url" type="xs:anyURI" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdeployRegistryUrl"
+            Custom jDeploy registry URL for private registries.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Maven Dependencies === -->
+
+      <xs:element name="maven-dependencies" type="jd:MavenDependenciesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "mavenDependencies"
+            Maven dependencies to include in the bundle.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === Checksums === -->
+
+      <xs:element name="checksums" type="jd:ChecksumsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "checksums"
+            MD5 checksums of uploaded files (icon.png, installsplash.png, etc.).
+            Typically managed automatically by jDeploy tooling.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <!-- === CheerpJ Web App === -->
+
+      <xs:element name="cheerpj" type="jd:CheerpjType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj"
+            Configuration for CheerpJ web application deployment (experimental).
+            Allows running Java apps in the browser via WebAssembly.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- ===================================================================== -->
+  <!-- SIMPLE TYPES AND ENUMERATIONS                                         -->
+  <!-- ===================================================================== -->
+
+  <xs:simpleType name="NpmPackageNameType">
+    <xs:annotation>
+      <xs:documentation>
+        A valid NPM package name: lowercase, may contain hyphens, dots,
+        and underscores. Scoped names (@scope/name) are also allowed.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:pattern value="(@[a-z0-9\-._~]+/)?[a-z0-9\-._~]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SemVerType">
+    <xs:annotation>
+      <xs:documentation>
+        Semantic version string (e.g., "1.0.0", "2.1.3-beta.1").
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[0-9]+\.[0-9]+\.[0-9]+(\-[a-zA-Z0-9._\-]+)?(\+[a-zA-Z0-9._\-]+)?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="JdkProviderType">
+    <xs:annotation>
+      <xs:documentation>
+        JDK distribution provider. Since jDeploy v5.4.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="zulu">
+        <xs:annotation>
+          <xs:documentation>Azul Zulu JDK (default). Includes ZuluFX variant for JavaFX.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="jbr">
+        <xs:annotation>
+          <xs:documentation>JetBrains Runtime. Use with jbr-variant for specific builds.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="JbrVariantType">
+    <xs:annotation>
+      <xs:documentation>
+        JetBrains Runtime variant. Only applies when jdk-provider is "jbr".
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="standard">
+        <xs:annotation>
+          <xs:documentation>Standard JetBrains Runtime.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="jcef">
+        <xs:annotation>
+          <xs:documentation>Includes JCEF (Java Chromium Embedded Framework) for embedded browsers.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="sdk">
+        <xs:annotation>
+          <xs:documentation>JetBrains Runtime SDK variant.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="sdk_jcef">
+        <xs:annotation>
+          <xs:documentation>JetBrains Runtime SDK with JCEF support.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="RunAsAdministratorType">
+    <xs:annotation>
+      <xs:documentation>
+        Elevated privilege configuration for application launchers.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="disabled">
+        <xs:annotation>
+          <xs:documentation>Run as normal user (default).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="allowed">
+        <xs:annotation>
+          <xs:documentation>Create both standard and administrator launchers.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="required">
+        <xs:annotation>
+          <xs:documentation>All launchers require elevated privileges.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PublishTargetTypeEnum">
+    <xs:annotation>
+      <xs:documentation>
+        Publish target types for application distribution.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NPM"/>
+      <xs:enumeration value="GITHUB"/>
+      <xs:enumeration value="GITLAB"/>
+      <xs:enumeration value="S3"/>
+      <xs:enumeration value="LOCAL"/>
+      <xs:enumeration value="MAVEN"/>
+      <xs:enumeration value="DOCKER"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PlatformType">
+    <xs:annotation>
+      <xs:documentation>
+        Supported platform identifiers for bundles, installers, and download pages.
+
+        Note: Some contexts use short forms (win-x64, mac-x64) while others
+        use long forms (windows-x64, windows-arm64). Both are accepted.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="mac"/>
+      <xs:enumeration value="mac-x64"/>
+      <xs:enumeration value="mac-arm64"/>
+      <xs:enumeration value="mac-high-sierra"/>
+      <xs:enumeration value="win"/>
+      <xs:enumeration value="win-x64"/>
+      <xs:enumeration value="win-arm64"/>
+      <xs:enumeration value="windows-x64"/>
+      <xs:enumeration value="windows-arm64"/>
+      <xs:enumeration value="linux"/>
+      <xs:enumeration value="linux-x64"/>
+      <xs:enumeration value="linux-arm64"/>
+      <xs:enumeration value="debian-x64"/>
+      <xs:enumeration value="debian-arm64"/>
+      <xs:enumeration value="all"/>
+      <xs:enumeration value="default"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PermissionNameType">
+    <xs:annotation>
+      <xs:documentation>
+        Supported macOS permission names.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="camera"/>
+      <xs:enumeration value="microphone"/>
+      <xs:enumeration value="location"/>
+      <xs:enumeration value="location_when_in_use"/>
+      <xs:enumeration value="location_always"/>
+      <xs:enumeration value="contacts"/>
+      <xs:enumeration value="calendars"/>
+      <xs:enumeration value="calendars_write"/>
+      <xs:enumeration value="reminders"/>
+      <xs:enumeration value="reminders_write"/>
+      <xs:enumeration value="photos"/>
+      <xs:enumeration value="photos_add"/>
+      <xs:enumeration value="motion"/>
+      <xs:enumeration value="health_share"/>
+      <xs:enumeration value="health_update"/>
+      <xs:enumeration value="bluetooth"/>
+      <xs:enumeration value="bluetooth_always"/>
+      <xs:enumeration value="speech_recognition"/>
+      <xs:enumeration value="homekit"/>
+      <xs:enumeration value="music"/>
+      <xs:enumeration value="tv_provider"/>
+      <xs:enumeration value="video_subscriber"/>
+      <xs:enumeration value="siri"/>
+      <xs:enumeration value="face_id"/>
+      <xs:enumeration value="desktop_folder"/>
+      <xs:enumeration value="documents_folder"/>
+      <xs:enumeration value="downloads_folder"/>
+      <xs:enumeration value="network_volumes"/>
+      <xs:enumeration value="removable_volumes"/>
+      <xs:enumeration value="file_provider_presence"/>
+      <xs:enumeration value="system_administration"/>
+      <xs:enumeration value="apple_events"/>
+      <xs:enumeration value="local_network"/>
+      <xs:enumeration value="media_library"/>
+      <xs:enumeration value="focus_status"/>
+      <xs:enumeration value="user_tracking"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CommandImplementsType">
+    <xs:annotation>
+      <xs:documentation>
+        Capabilities a command can implement.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="updater">
+        <xs:annotation>
+          <xs:documentation>Command implements auto-update functionality.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="launcher">
+        <xs:annotation>
+          <xs:documentation>Command acts as the primary application launcher.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="service_controller">
+        <xs:annotation>
+          <xs:documentation>Command manages background services (start/stop/status).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ===================================================================== -->
+  <!-- COMPLEX TYPES                                                         -->
+  <!-- ===================================================================== -->
+
+  <!-- === Bin === -->
+
+  <xs:complexType name="BinType">
+    <xs:sequence>
+      <xs:element name="command" type="jd:BinCommandType" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>
+            A CLI command entry. In JSON, this is a key-value pair in the "bin" object.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="BinCommandType">
+    <xs:annotation>
+      <xs:documentation>
+        A single bin command mapping a name to a script path.
+        JSON equivalent: { "commandName": "jdeploy-bundle/jdeploy.js" }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>The CLI command name users will type to launch the app.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="script" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Path to the entry point script. Typically "jdeploy-bundle/jdeploy.js".</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- === Dependencies === -->
+
+  <xs:complexType name="DependenciesType">
+    <xs:sequence>
+      <xs:element name="dependency" type="jd:DependencyType" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>An NPM package dependency with name and semver range.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="DependencyType">
+    <xs:annotation>
+      <xs:documentation>
+        A single NPM dependency.
+        JSON equivalent: { "packageName": "^1.0.0" }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>NPM package name.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="version" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Semver version range (e.g., "^0.8.4", "2.6.7").</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- === NPM Files === -->
+
+  <xs:complexType name="NpmFilesType">
+    <xs:sequence>
+      <xs:element name="file" type="xs:string" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>A file or directory to include in the npm package.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Scripts === -->
+
+  <xs:complexType name="ScriptsType">
+    <xs:sequence>
+      <xs:element name="script" type="jd:ScriptType" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>An NPM lifecycle script.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ScriptType">
+    <xs:annotation>
+      <xs:documentation>
+        A single NPM script.
+        JSON equivalent: { "test": "echo \"Error: ...\"" }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="name" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Script lifecycle name (e.g., "test", "build").</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="command" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Shell command to execute.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- === String List (generic reusable) === -->
+
+  <xs:complexType name="StringListType">
+    <xs:annotation>
+      <xs:documentation>
+        A list of string arguments. Maps to a JSON array of strings.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="arg" type="xs:string" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>A single argument string.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Args === -->
+
+  <xs:complexType name="ArgsType">
+    <xs:annotation>
+      <xs:documentation>
+        Runtime arguments for the JVM and application. Each arg element
+        contains a single argument string that may include platform conditions
+        and placeholder variables.
+
+        Platform condition syntax: -X[mac]ms2G, -D[win|linux]prop=val
+        Placeholder syntax: {{ user.home }}, {{ exe.dir }}
+        Dynamic expressions: {{ env.VAR }}, {{ path(...) }}, {{ if ... }}
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="arg" type="xs:string" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Hooks === -->
+
+  <xs:complexType name="HooksType">
+    <xs:annotation>
+      <xs:documentation>
+        Pre/post build hooks executed during jDeploy packaging.
+        Maps to flat JSON properties: antFile, preCopyTarget, postCopyTarget,
+        preCopyScript, postCopyScript.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="ant-file" type="xs:string" minOccurs="0" default="build.xml">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "antFile"
+            Path to ANT build file. Default: "build.xml".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="pre-copy-target" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "preCopyTarget"
+            ANT target to run before copying files to jdeploy-bundle.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="post-copy-target" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "postCopyTarget"
+            ANT target to run after copying files to jdeploy-bundle.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="pre-copy-script" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "preCopyScript"
+            Script to execute before copying files.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="post-copy-script" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "postCopyScript"
+            Script to execute after copying files.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- === Copy Rules === -->
+
+  <xs:complexType name="CopyRulesType">
+    <xs:sequence>
+      <xs:element name="copy-rule" type="jd:CopyRuleType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="CopyRuleType">
+    <xs:annotation>
+      <xs:documentation>
+        A rule for copying additional files into the jdeploy-bundle.
+        JSON equivalent: { "dir": "path", "includes": "glob", "excludes": "glob" }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="dir" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "dir"
+            Required. Relative path to directory containing files to copy.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="includes" type="jd:GlobPatternsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "includes"
+            Glob patterns of files to include. If omitted, all files are included.
+            JSON accepts a single string or array of strings.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="excludes" type="jd:GlobPatternsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "excludes"
+            Glob patterns of files to exclude.
+            JSON accepts a single string or array of strings.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="GlobPatternsType">
+    <xs:sequence>
+      <xs:element name="pattern" type="xs:string" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>A PathMatcher glob pattern (e.g., "**/*.dll", "*.so").</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Document Types === -->
+
+  <xs:complexType name="DocumentTypesType">
+    <xs:sequence>
+      <xs:element name="document-type" type="jd:DocumentTypeType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="DocumentTypeType">
+    <xs:annotation>
+      <xs:documentation>
+        A file or directory association. For file associations, specify
+        extension and mimetype. For directory associations, set type="directory".
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="type" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "type"
+            Set to "directory" for directory associations. Omit for file associations.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="extension" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "extension"
+            File extension without dot (e.g., "txt", "html", "mp4").
+            Required for file associations.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="mimetype" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "mimetype"
+            MIME type (e.g., "text/plain", "application/pdf").
+            Required for file associations.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="editor" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "editor"
+            Whether the app can edit files of this type (true) or only view (false).
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="custom" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "custom"
+            Whether this is a custom MIME type. Used on Linux to register
+            the mimetype in the system database. Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="role" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "role"
+            For directory associations: "Editor" or "Viewer".
+            Default: "Viewer".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="description" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "description"
+            Human-readable text shown in context menus (e.g., "Open as Project").
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="icon" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "icon"
+            Path to custom icon file for this document type association.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- === URL Schemes === -->
+
+  <xs:complexType name="UrlSchemesType">
+    <xs:sequence>
+      <xs:element name="url-scheme" type="xs:string" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>
+            A URL scheme to register (e.g., "myapp", "custom-protocol").
+            Users can launch the app by clicking links like "myapp://action".
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Permissions === -->
+
+  <xs:complexType name="PermissionsType">
+    <xs:sequence>
+      <xs:element name="permission" type="jd:PermissionType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="PermissionType">
+    <xs:annotation>
+      <xs:documentation>
+        A system permission the app requires (primarily macOS).
+        JSON equivalent: { "name": "camera", "description": "Needed for video" }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="name" type="jd:PermissionNameType">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "name"
+            The permission identifier. See PermissionNameType for allowed values.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="description" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "description"
+            User-facing explanation of why the app needs this permission.
+            Shown in the macOS permission request dialog.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- === Commands === -->
+
+  <xs:complexType name="CommandsType">
+    <xs:sequence>
+      <xs:element name="command" type="jd:CommandType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="CommandType">
+    <xs:annotation>
+      <xs:documentation>
+        A CLI command definition.
+        JSON equivalent: { "commandName": { "description": "...", "args": [...], "implements": [...] } }
+        Command names must match: ^[A-Za-z0-9][A-Za-z0-9._-]*$
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="description" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "description"
+            Human-readable description of what the command does.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="args" type="jd:ArgsType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "args"
+            JVM/application arguments for this command. Supports placeholder $@
+            for pass-through arguments.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="implements" type="jd:CommandImplementsListType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "implements"
+            Capabilities this command provides (updater, launcher, service_controller).
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="embed-plist" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "embedPlist"
+            Whether to embed a LaunchAgent plist in the macOS bundle for this command.
+            Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+    <xs:attribute name="name" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>
+          The command name (used as the JSON object key).
+          Must match: ^[A-Za-z0-9][A-Za-z0-9._-]*$
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="CommandImplementsListType">
+    <xs:sequence>
+      <xs:element name="capability" type="jd:CommandImplementsType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Helper === -->
+
+  <xs:complexType name="HelperType">
+    <xs:annotation>
+      <xs:documentation>
+        System tray helper configuration.
+        JSON equivalent: { "actions": [{ "label": "...", "url": "..." }] }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="action" type="jd:HelperActionType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="HelperActionType">
+    <xs:annotation>
+      <xs:documentation>
+        A helper menu action. Appears in system tray and service management panel.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="label" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "label"
+            Required. Menu label text (cannot be empty).
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="description" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "description"
+            Optional tooltip/description text.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="url" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "url"
+            Required. Web URL, custom protocol URL, or file path to open.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- === Publish Targets === -->
+
+  <xs:complexType name="PublishTargetsType">
+    <xs:sequence>
+      <xs:element name="publish-target" type="jd:PublishTargetType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="PublishTargetType">
+    <xs:annotation>
+      <xs:documentation>
+        A distribution target for publishing the application.
+        JSON equivalent: { "name": "npm: myapp", "type": "NPM", "url": "myapp" }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="name" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "name"
+            Identifier/label for this publish target.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="type" type="jd:PublishTargetTypeEnum">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "type"
+            Target type: NPM, GITHUB, GITLAB, S3, LOCAL, MAVEN, or DOCKER.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="url" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "url"
+            Target-specific URL or identifier.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="is-default" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "isDefault"
+            Whether this is the default publish target. Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- === Download Page === -->
+
+  <xs:complexType name="DownloadPageType">
+    <xs:annotation>
+      <xs:documentation>
+        Configuration for the jdeploy.com download page.
+        JSON equivalent: { "platforms": ["windows-x64", "mac-arm64"] }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="platform" type="jd:PlatformType" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>
+            A platform to show on the download page.
+            Use "all" for all platforms, "default" for the default set,
+            or specific platforms like "windows-x64", "mac-arm64", etc.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Platform List (for bundles and installers) === -->
+
+  <xs:complexType name="PlatformListType">
+    <xs:sequence>
+      <xs:element name="platform" type="jd:PlatformType" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>A platform to build for.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Platform Bundles === -->
+
+  <xs:complexType name="PlatformBundlesType">
+    <xs:annotation>
+      <xs:documentation>
+        Platform-specific bundle configuration for reducing download sizes.
+        Use only when the JAR contains large native libraries (&gt;50MB total)
+        for multiple platforms (e.g., Compose Multiplatform, LWJGL).
+
+        Maps to flat JSON properties: platformBundlesEnabled, fallbackToUniversal,
+        packageMacX64, packageMacArm64, packageWinX64, packageWinArm64,
+        packageLinuxX64, packageLinuxArm64.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="enabled" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "platformBundlesEnabled"
+            Whether to create platform-specific bundles. Default: false.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="fallback-to-universal" type="xs:boolean" minOccurs="0" default="true">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "fallbackToUniversal"
+            Whether to fall back to universal bundle if a platform-specific
+            version is unavailable. Default: true.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="packages" type="jd:PlatformPackagesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            NPM package names for each platform-specific bundle.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="PlatformPackagesType">
+    <xs:sequence>
+      <xs:element name="package" type="jd:PlatformPackageType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="PlatformPackageType">
+    <xs:annotation>
+      <xs:documentation>
+        NPM package name for a specific platform bundle.
+        JSON equivalent: "packageMacX64": "myapp-mac-x64"
+
+        The platform attribute maps to the JSON property suffix:
+          mac-x64    → packageMacX64
+          mac-arm64  → packageMacArm64
+          win-x64    → packageWinX64
+          win-arm64  → packageWinArm64
+          linux-x64  → packageLinuxX64
+          linux-arm64 → packageLinuxArm64
+      </xs:documentation>
+    </xs:annotation>
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="platform" type="jd:PlatformType" use="required"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <!-- === Home Directories === -->
+
+  <xs:complexType name="HomeDirectoriesType">
+    <xs:annotation>
+      <xs:documentation>
+        Custom jDeploy home directory overrides.
+        Maps to: jdeployHome, jdeployHomeMac, jdeployHomeWindows, jdeployHomeLinux.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="default" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdeployHome"
+            Default jDeploy home directory for all platforms.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="mac" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdeployHomeMac"
+            macOS-specific jDeploy home directory.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="windows" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdeployHomeWindows"
+            Windows-specific jDeploy home directory.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="linux" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "jdeployHomeLinux"
+            Linux-specific jDeploy home directory.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <!-- === Maven Dependencies === -->
+
+  <xs:complexType name="MavenDependenciesType">
+    <xs:sequence>
+      <xs:element name="dependency" type="xs:string" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>
+            A Maven dependency coordinate string (e.g., "groupId:artifactId:version").
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- === Checksums === -->
+
+  <xs:complexType name="ChecksumsType">
+    <xs:annotation>
+      <xs:documentation>
+        MD5 checksums of uploaded files. Managed automatically by jDeploy tooling.
+        JSON equivalent: { "icon.png": "abc123...", "installsplash.png": "def456..." }
+      </xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="checksum" type="jd:ChecksumType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ChecksumType">
+    <xs:attribute name="file" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Filename (e.g., "icon.png", "installsplash.png").</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="hash" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>MD5 hash value.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <!-- === CheerpJ === -->
+
+  <xs:complexType name="CheerpjType">
+    <xs:annotation>
+      <xs:documentation>
+        Configuration for CheerpJ web application deployment (experimental).
+        Allows running Java apps in the browser via WebAssembly.
+        JSON property: "cheerpj"
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="enabled" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj.enabled"
+            Whether to build as a web app using CheerpJ.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="github-pages" type="jd:GithubPagesType" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj.githubPages"
+            GitHub Pages deployment configuration.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+  <xs:complexType name="GithubPagesType">
+    <xs:annotation>
+      <xs:documentation>
+        GitHub Pages configuration for CheerpJ deployment.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:all>
+      <xs:element name="enabled" type="xs:boolean" minOccurs="0" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj.githubPages.enabled"
+            Whether to publish to GitHub Pages.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="branch" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj.githubPages.branch"
+            Branch name for GitHub Pages deployment.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="path" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj.githubPages.path"
+            Directory path within GitHub Pages site.
+            Used for both branch and tag commits when branch-path/tag-path not set.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="branch-path" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj.githubPages.branchPath"
+            Path within pages site for branch commits. Supports {{ branch }} placeholder.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="tag-path" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>
+            JSON property: "cheerpj.githubPages.tagPath"
+            Path within pages site for tag releases. Supports {{ tag }} placeholder.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+
+</xs:schema>
