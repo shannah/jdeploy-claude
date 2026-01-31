@@ -96,10 +96,89 @@ If the project already produces a shaded JAR, keep the existing configuration.
 
 ### Quarkus Projects
 
-For Quarkus apps, enable the uber-jar in `application.properties`:
+Quarkus apps require an uber-jar for jDeploy distribution. The JAR name follows the pattern `*-runner.jar`.
+
+**Maven:** Add to `application.properties`:
 ```properties
 quarkus.package.jar.type=uber-jar
 ```
+Then build with: `mvn clean package`
+Output: `target/<artifactId>-<version>-runner.jar`
+
+**Gradle:** Create a custom build task in `build.gradle`:
+```gradle
+tasks.register('buildUberJar') {
+    group = 'build'
+    description = 'Builds an uber-jar with all dependencies included'
+    dependsOn 'clean'
+    doFirst {
+        System.setProperty('quarkus.package.jar.type', 'uber-jar')
+    }
+    finalizedBy 'quarkusBuild'
+}
+```
+Then build with: `./gradlew buildUberJar`
+Output: `build/<artifactId>-<version>-runner.jar`
+
+**Quarkus `@QuarkusMain` for Multi-Modal Apps:**
+
+Quarkus apps that need mode detection (CLI, service, MCP) **must** have a `@QuarkusMain` entry point class. This is because mode detection must happen **before** `Quarkus.run()` is called — if `jdeploy.mode` is `"gui"`, the app should show a GUI fallback instead of starting Quarkus.
+
+If the project already has a `@QuarkusMain` class, inject mode detection there. If not, create one:
+
+```java
+import io.quarkus.runtime.Quarkus;
+import io.quarkus.runtime.annotations.QuarkusMain;
+
+@QuarkusMain
+public class Main {
+    public static void main(String... args) {
+        String mode = System.getProperty("jdeploy.mode", "gui");
+
+        if ("gui".equals(mode)) {
+            // Show GUI fallback (see Section 6)
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                javax.swing.JOptionPane.showMessageDialog(
+                    null,
+                    "MyApp v1.0\n\nThis is a background service.\n"
+                        + "Use 'myapp-server service start' to start the service.",
+                    "About MyApp",
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE
+                );
+                System.exit(0);
+            });
+        } else {
+            // Launch Quarkus normally for CLI/service/MCP mode
+            Quarkus.run(args);
+        }
+    }
+}
+```
+
+**Quarkus MCP Server Requirements:**
+
+MCP servers communicate via stdin/stdout, so console output must be suppressed. Add to `application.properties`:
+```properties
+# Disable banner — it would corrupt MCP protocol on stdout
+quarkus.banner.enabled=false
+
+# Disable console logging — stdout must be clean for MCP protocol
+quarkus.log.console.enable=false
+
+# Redirect logs to file instead
+quarkus.log.file.enabled=true
+quarkus.log.file.path=myapp.log
+quarkus.log.file.level=INFO
+```
+
+For the MCP server dependency (Quarkiverse), add to `pom.xml`:
+```xml
+<dependency>
+    <groupId>io.quarkiverse.mcp</groupId>
+    <artifactId>quarkus-mcp-server-stdio</artifactId>
+</dependency>
+```
+(Managed by `quarkus-mcp-server-bom` in `<dependencyManagement>`.)
 
 ## 3. Detect App Characteristics
 
@@ -129,6 +208,14 @@ grep -r "import picocli\.\|import com.beust.jcommander\.\|import org.apache.comm
 grep -r "import org.kohsuke.args4j\." src/ --include="*.java" 2>/dev/null | head -5
 ```
 
+### 3b-1. Detect Quarkus Entry Point
+
+For Quarkus apps that need mode detection, check if a `@QuarkusMain` class already exists:
+```bash
+grep -r "@QuarkusMain" src/ --include="*.java" 2>/dev/null
+```
+If found, inject mode detection there. If not, create a new `@QuarkusMain` class (see [Section 2 — Quarkus Projects](#quarkus-projects)).
+
 ### 3c. Detect Service Capabilities
 
 Look for signs the app runs as a long-lived background service:
@@ -154,11 +241,16 @@ Look for signs the app implements a Model Context Protocol (MCP) server:
 - References MCP tools, resources, or prompts
 
 ```bash
-# Check for MCP SDK usage
-grep -r "import io.modelcontextprotocol\.\|McpServer\|@McpTool\|@McpResource\|mcp-server\|modelcontextprotocol" src/ --include="*.java" 2>/dev/null | head -5
+# Check for MCP SDK usage (standard and Quarkus)
+grep -r "import io.modelcontextprotocol\.\|McpServer\|@McpTool\|@McpResource\|mcp-server\|modelcontextprotocol\|quarkus-mcp-server\|io.quarkiverse.mcp" src/ --include="*.java" 2>/dev/null | head -5
 
 # Check build files for MCP dependencies
-grep -r "modelcontextprotocol\|mcp-sdk\|mcp-server" pom.xml build.gradle build.gradle.kts 2>/dev/null
+grep -r "modelcontextprotocol\|mcp-sdk\|mcp-server\|quarkus-mcp-server\|quarkiverse.mcp" pom.xml build.gradle build.gradle.kts 2>/dev/null
+```
+
+For Quarkus projects, also check for `@Tool` annotations from `io.quarkiverse.mcp`:
+```bash
+grep -r "@Tool\|import io.quarkiverse.mcp" src/ --include="*.java" 2>/dev/null | head -5
 ```
 
 **Note**: If the app is an MCP server, it is also a CLI app (MCP servers communicate over stdin/stdout).
@@ -244,8 +336,8 @@ Create or modify `package.json` in the project root.
 - `jdeploy.args`: Array of JVM arguments
 - `jdeploy.buildCommand`: Array of command arguments to build the project automatically before publishing. **Only add if the user explicitly requests automatic builds on publish.**
 - `jdeploy.platformBundlesEnabled`: Default `false`. Only set `true` when JAR contains large native libraries (>50MB) for multiple platforms.
-- `jdeploy.commands`: Array of CLI commands the app provides (see below)
-- `ai.mcp`: MCP server configuration (see below)
+- `jdeploy.commands`: Object mapping command names to their configuration (see below)
+- `jdeploy.ai.mcp`: MCP server configuration (see below)
 
 ### JAR Path Examples by Build Type
 
@@ -256,25 +348,25 @@ Create or modify `package.json` in the project root.
 | Gradle standard | `build/libs/myapp-1.0.jar` (with `build/libs/lib/`) |
 | Gradle shadow | `build/libs/myapp-1.0-all.jar` |
 | Compose Multiplatform | `compose-desktop/build/libs/compose-desktop-1.0-SNAPSHOT-all.jar` |
-| Quarkus uber-jar | `target/myapp-1.0-runner.jar` |
+| Quarkus uber-jar (Maven) | `target/myapp-1.0-runner.jar` |
+| Quarkus uber-jar (Gradle) | `build/myapp-1.0-runner.jar` |
 
 ### Configuring Commands (CLI / Service / MCP Apps)
 
-If the app has CLI, service, or MCP capabilities, add a `jdeploy.commands` array. Each command entry creates a CLI command that gets added to the user's PATH when the app is installed.
+If the app has CLI, service, or MCP capabilities, add a `jdeploy.commands` object. Each key is a command name, and its value is a configuration object with `description` (required), optional `args` (array of static arguments injected by the launcher before user arguments), and optional `implements` (array of roles like `"service_controller"`, `"updater"`, `"launcher"`). Each command creates a CLI executable that gets added to the user's PATH when the app is installed.
 
-When a command is invoked, jDeploy launches the app's JAR with the system property `jdeploy.mode` set to `"cli"`. This allows the app to distinguish between GUI and CLI launch modes.
+When a command is invoked, jDeploy launches the app's JAR with the system property `jdeploy.mode` set to `"command"`. This allows the app to distinguish between GUI and command launch modes.
 
 ```json
 "jdeploy": {
   "jar": "target/myapp-1.0.jar",
   "javaVersion": "21",
   "title": "My App",
-  "commands": [
-    {
-      "name": "myapp-cmd",
+  "commands": {
+    "myapp-cmd": {
       "description": "Run My App from the command line"
     }
-  ]
+  }
 }
 ```
 
@@ -284,26 +376,26 @@ When a command is invoked, jDeploy launches the app's JAR with the system proper
 
 #### Service Commands
 
-If the app runs as a service (long-lived background process), the command must declare the roles `"updater"` and `"service_controller"` at minimum. This tells jDeploy to set up a background helper with a system tray menu allowing users to start/stop the service.
+If the app runs as a service (long-lived background process), the command must include `"service_controller"` in its `"implements"` array. This tells jDeploy to add service lifecycle subcommands (`service install`, `service start`, `service stop`, `service status`, `service uninstall`) — all handled by the native launcher. The Java app just needs to start its server logic and stay alive. Optionally add `"updater"` to enable self-update via `<command> update`.
 
 ```json
 "jdeploy": {
   "jar": "target/myservice-1.0.jar",
   "javaVersion": "21",
   "title": "My Service",
-  "commands": [
-    {
-      "name": "myservice",
+  "commands": {
+    "myservice": {
       "description": "My background service",
-      "roles": ["updater", "service_controller"]
+      "args": ["-Dapp.role=server"],
+      "implements": ["service_controller"]
     }
-  ]
+  }
 }
 ```
 
 ### Configuring MCP Server
 
-If the app implements an MCP server, add **both** a command in `jdeploy.commands` **and** an `ai.mcp` section at the top level of package.json. The `ai.mcp` section tells jDeploy installer clients (like Claude) how to register the app as an MCP server.
+If the app implements an MCP server, add **both** a command in `jdeploy.commands` **and** a `jdeploy.ai.mcp` section (nested inside `jdeploy`). The `ai.mcp` section tells jDeploy installer clients (like Claude Desktop, VS Code, Cursor, etc.) how to register the app as an MCP server.
 
 ```json
 {
@@ -313,18 +405,18 @@ If the app implements an MCP server, add **both** a command in `jdeploy.commands
     "jar": "target/my-mcp-tool-1.0.jar",
     "javaVersion": "21",
     "title": "My MCP Tool",
-    "commands": [
-      {
-        "name": "my-mcp-tool",
-        "description": "An MCP server that provides custom tools"
+    "commands": {
+      "my-mcp-tool": {
+        "description": "An MCP server that provides custom tools",
+        "args": ["--mcp-mode"]
       }
-    ]
-  },
-  "ai": {
-    "mcp": {
-      "command": "my-mcp-tool",
-      "args": [],
-      "env": {}
+    },
+    "ai": {
+      "mcp": {
+        "command": "my-mcp-tool",
+        "args": ["--stdio"],
+        "defaultEnabled": true
+      }
     }
   },
   "bin": {"my-mcp-tool": "jdeploy-bundle/jdeploy.js"},
@@ -341,10 +433,10 @@ If the app implements an MCP server, add **both** a command in `jdeploy.commands
 }
 ```
 
-**Key points about `ai.mcp`:**
-- `command`: Must match the `name` of one of the entries in `jdeploy.commands`
-- `args`: Additional arguments to pass when launching as an MCP server (optional, default `[]`)
-- `env`: Environment variables to set (optional, default `{}`)
+**Key points about `jdeploy.ai.mcp`:**
+- `command`: Must match a key in `jdeploy.commands`
+- `args`: Additional arguments passed when the AI tool invokes the MCP server (optional, default `[]`)
+- `defaultEnabled`: Whether the MCP server is auto-enabled during installation (optional, default `false`)
 
 ## 5. Find and Configure Application Icon
 
@@ -383,7 +475,7 @@ If no suitable icon exists, skip this step. jDeploy will use a default icon.
 
 ### When the jDeploy launcher launches an app, it sets the system property:
 - `jdeploy.mode=gui` — when launched as a desktop app (double-click, Start menu, etc.)
-- `jdeploy.mode=cli` — when launched via a CLI command
+- `jdeploy.mode=command` — when launched via a CLI command
 
 ### What to implement
 
@@ -393,7 +485,7 @@ Add detection **early** in the `main()` method. If `jdeploy.mode` equals `"gui"`
 
 ```java
 public static void main(String[] args) {
-    String mode = System.getProperty("jdeploy.mode", "cli");
+    String mode = System.getProperty("jdeploy.mode", "gui");
 
     if ("gui".equals(mode)) {
         // Show a simple About dialog when launched as a desktop app
@@ -413,6 +505,10 @@ public static void main(String[] args) {
     // ...
 }
 ```
+
+### Quarkus apps
+
+For Quarkus apps, the GUI fallback must go in the `@QuarkusMain` class, **before** calling `Quarkus.run()`. This prevents Quarkus from starting its container when in GUI mode. See the `@QuarkusMain` example in [Section 2 — Quarkus Projects](#quarkus-projects).
 
 ### When NOT to add this
 
@@ -522,6 +618,8 @@ jobs:
 | Missing dependencies | For non-shaded JARs, ensure `lib/` directory is created |
 | JavaFX issues | Set `"javafx": true` and verify JavaFX modules are included |
 | Quarkus app won't run | Enable uber-jar: `quarkus.package.jar.type=uber-jar` |
+| Quarkus MCP corrupted output | Disable console logging and banner in `application.properties` |
+| Quarkus ignores `jdeploy.mode` | Create a `@QuarkusMain` class with mode detection before `Quarkus.run()` |
 
 ---
 
