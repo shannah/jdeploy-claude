@@ -251,10 +251,13 @@ name: jDeploy CI
 on:
   push:
     branches:
-      - '**'
-      - '!gh-pages'
+      - '*-snapshot'
     tags:
-      - '**'
+      - 'v*'
+
+concurrency:
+  group: jdeploy-release-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
   build:
