@@ -13,11 +13,13 @@ These instructions guide you through configuring a Java project to work with jDe
 7. [Optional: GitHub Workflows](#7-optional-github-workflows)
 8. [Build and Validation](#8-build-and-validation)
 9. [Publishing via GitHub Releases](#9-publishing-via-github-releases)
-10. [Compose Multiplatform Desktop Applications](#compose-multiplatform-desktop-applications)
-11. [Platform-Specific Builds for Large Native Libraries](#platform-specific-builds-for-large-native-libraries)
+10. [How Users Install Your App](#10-how-users-install-your-app)
+11. [Compose Multiplatform Desktop Applications](#compose-multiplatform-desktop-applications)
+12. [Platform-Specific Builds for Large Native Libraries](#platform-specific-builds-for-large-native-libraries)
 
 ---
 
+<!-- section:prerequisites -->
 ## 1. Prerequisites Check
 
 Verify the project structure:
@@ -26,6 +28,9 @@ Verify the project structure:
 - Identify the main class
 - Check current JAR output configuration
 
+<!-- /section:prerequisites -->
+
+<!-- section:jar-build -->
 ## 2. Configure Executable JAR Build
 
 ### Preferred: JAR with Dependencies in lib/ Directory
@@ -181,6 +186,9 @@ For the MCP server dependency (Quarkiverse), add to `pom.xml`:
 ```
 (Managed by `quarkus-mcp-server-bom` in `<dependencyManagement>`.)
 
+<!-- /section:jar-build -->
+
+<!-- section:detect-characteristics -->
 ## 3. Detect App Characteristics
 
 Before configuring package.json, analyze the project to determine what modes the app supports. Check for **all** of the following:
@@ -285,6 +293,9 @@ After detection, classify the app:
 Any app that has CLI, Service, or MCP capabilities needs `jdeploy.commands` in package.json.
 Any app without a GUI needs a GUI fallback (see [Section 6](#6-add-gui-fallback-for-non-gui-apps)).
 
+<!-- /section:detect-characteristics -->
+
+<!-- section:package-json -->
 ## 4. Configure package.json
 
 Create or modify `package.json` in the project root.
@@ -439,6 +450,9 @@ If the app implements an MCP server, add **both** a command in `jdeploy.commands
 - `args`: Additional arguments passed when the AI tool invokes the MCP server (optional, default `[]`)
 - `defaultEnabled`: Whether the MCP server is auto-enabled during installation (optional, default `false`)
 
+<!-- /section:package-json -->
+
+<!-- section:icon -->
 ## 5. Find and Configure Application Icon
 
 jDeploy uses an `icon.png` file in the project root (same directory as `package.json`).
@@ -470,6 +484,9 @@ jDeploy uses an `icon.png` file in the project root (same directory as `package.
 
 If no suitable icon exists, skip this step. jDeploy will use a default icon.
 
+<!-- /section:icon -->
+
+<!-- section:gui-fallback -->
 ## 6. Add GUI Fallback for Non-GUI Apps
 
 **This section applies when**: The app has **no GUI** but will be distributed via jDeploy (which can launch apps in GUI mode). Apps that are purely CLI, service, or MCP-only need a minimal GUI fallback so that when a user double-clicks the app (launching in GUI mode), they see something useful instead of nothing.
@@ -516,6 +533,9 @@ For Quarkus apps, the GUI fallback must go in the `@QuarkusMain` class, **before
 - If the app already has a GUI (Swing, JavaFX, Compose) — it already handles GUI mode.
 - If the app is multi-modal and has its own GUI mode handling — don't override it.
 
+<!-- /section:gui-fallback -->
+
+<!-- section:github-workflows -->
 ## 7. Optional: GitHub Workflows
 
 Create `.github/workflows/jdeploy.yml`:
@@ -592,6 +612,9 @@ jobs:
               notarization_password: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
 ```
 
+<!-- /section:github-workflows -->
+
+<!-- section:build-validation -->
 ## 8. Build and Validation
 
 1. **Verify Java version compatibility:**
@@ -630,6 +653,9 @@ jobs:
 
 ---
 
+<!-- /section:build-validation -->
+
+<!-- section:publishing -->
 ## 9. Publishing via GitHub Releases
 
 Once your project is configured and builds successfully, you can publish it using GitHub Releases. The jDeploy GitHub Action automatically builds native installers (Windows .exe, macOS .dmg, Linux packages) whenever a GitHub Release is created.
@@ -693,8 +719,57 @@ gh release view v1.0.0
 
 You should see platform-specific installers (e.g., `.exe`, `.dmg`, `.deb`) attached to the release.
 
+<!-- /section:publishing -->
+
+<!-- section:user-installation -->
+## 10. How Users Install Your App
+
+After publishing a GitHub Release, the jDeploy GitHub Action builds native installers and attaches them to the release. Users install your app by downloading the appropriate installer for their platform from the release page.
+
+### Native Installers
+
+The GitHub Action creates:
+- **Windows**: `.exe` installer
+- **macOS**: `.dmg` disk image
+- **Linux**: `.deb` package and other formats
+
+Users download the installer from `https://github.com/<owner>/<repo>/releases/latest` and run it. No Java installation is required — jDeploy bundles the appropriate JRE.
+
+### MCP Server Auto-Registration
+
+If your app is configured as an MCP server (has `jdeploy.ai.mcp` in package.json), the jDeploy installer provides automatic AI tool integration:
+
+1. During installation, the installer detects which AI tools are installed on the user's system
+2. It shows an **"Install AI Integrations"** checkbox
+3. The user selects which AI tools to register the MCP server with
+4. The installer configures the MCP server in each selected tool's configuration file
+
+**Supported AI tools:**
+
+| Tool | Auto-Install |
+|------|-------------|
+| Claude Desktop | Yes |
+| Claude Code | Yes |
+| VS Code (Copilot) | Yes |
+| Cursor | Yes |
+| Windsurf | Yes |
+| Gemini CLI | Yes |
+| Codex CLI | Yes |
+| OpenCode | Yes |
+
+This means users can install your MCP server and have it immediately available in their AI tools — no manual configuration needed.
+
+### When Writing Documentation or Tutorials
+
+When documenting how users install your app:
+- **Recommend the native installer** from the GitHub release page as the primary installation method
+- For MCP server projects, emphasize that the installer handles AI tool registration automatically
+- The release page URL follows the pattern: `https://github.com/<owner>/<repo>/releases/latest`
+<!-- /section:user-installation -->
+
 ---
 
+<!-- section:compose-multiplatform -->
 ## Compose Multiplatform Desktop Applications
 
 ### Prerequisites
@@ -789,6 +864,9 @@ Cross-platform JARs will be ~90MB+ due to native libraries for all platforms. Th
 
 ---
 
+<!-- /section:compose-multiplatform -->
+
+<!-- section:platform-specific-builds -->
 ## Platform-Specific Builds for Large Native Libraries
 
 **Use ONLY when**: JAR contains native libraries >50MB for multiple platforms AND platform-specific builds would reduce size by at least 50%. Do NOT use for standard Java, JavaFX, or small Compose apps.
@@ -931,3 +1009,4 @@ When `platformBundlesEnabled: true` is set:
 1. Identify the library's native file patterns in the JAR
 2. Add broad exclusion: `/library/native`
 3. Add platform inclusion: `!/library/native/target-platform`
+<!-- /section:platform-specific-builds -->
