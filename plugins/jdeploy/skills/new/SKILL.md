@@ -49,7 +49,7 @@ Construct and execute the command:
 npx jdeploy generate \
   -t <template> \
   -d <parent-directory> \
-  --app-title "<App Title>" \
+  --app-title="<App Title>" \
   [--github-repository <username/repo>] \
   <fully.qualified.MainClass>
 ```
@@ -58,22 +58,22 @@ npx jdeploy generate \
 
 Basic Swing app:
 ```bash
-npx jdeploy generate -t swing --app-title "My Desktop App" com.example.myapp.MyApp
+npx jdeploy generate -t swing --app-title="My Desktop App" com.example.myapp.MyApp
 ```
 
 JavaFX app in specific directory:
 ```bash
-npx jdeploy generate -t javafx -d ~/projects --app-title "My FX App" com.mycompany.fxapp.MainApp
+npx jdeploy generate -t javafx -d ~/projects --app-title="My FX App" com.mycompany.fxapp.MainApp
 ```
 
 MCP Server with GitHub:
 ```bash
-npx jdeploy generate -t spring-boot-mcp-server --app-title "My MCP Tool" --github-repository myuser/my-mcp-tool com.myuser.mcptool.MyMcpTool
+npx jdeploy generate -t spring-boot-mcp-server --app-title="My MCP Tool" --github-repository myuser/my-mcp-tool com.myuser.mcptool.MyMcpTool
 ```
 
 CLI tool:
 ```bash
-npx jdeploy generate -t picocli --app-title "My CLI" com.example.cli.MyCli
+npx jdeploy generate -t picocli --app-title="My CLI" com.example.cli.MyCli
 ```
 
 ### Step 3: Verify Generation
