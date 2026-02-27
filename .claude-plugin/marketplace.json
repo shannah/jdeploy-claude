@@ -12,7 +12,7 @@
       "name": "jdeploy",
       "source": "./plugins/jdeploy",
       "description": "Create and publish cross-platform Java desktop applications with jDeploy. Includes skills for project setup, creation from templates, local testing, and publishing to npm or GitHub.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": {
         "name": "Steve Hannah"
       },
