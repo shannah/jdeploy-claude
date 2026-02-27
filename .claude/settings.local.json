@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(npx:*)",
+      "Bash(npm:*)",
+      "Bash(mvn:*)",
+      "Bash(./mvnw:*)",
+      "Bash(gradle:*)",
+      "Bash(./gradlew:*)",
+      "Bash(java:*)",
+      "Bash(gh:*)",
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(unzip:*)",
+      "Bash(file:*)",
+      "Bash(/bin/ls:*)"
     ],
     "deny": [],
     "ask": []

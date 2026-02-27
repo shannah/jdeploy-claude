@@ -1,0 +1,12 @@
+{
+  "name": "jdeploy",
+  "description": "Create and publish cross-platform Java desktop applications with jDeploy",
+  "version": "1.0.0",
+  "author": {
+    "name": "Steve Hannah",
+    "email": "steve@weblite.ca"
+  },
+  "homepage": "https://www.jdeploy.com",
+  "repository": "https://github.com/shannah/jdeploy-claude",
+  "keywords": ["jdeploy", "java", "desktop", "deployment", "installer", "cross-platform"]
+}

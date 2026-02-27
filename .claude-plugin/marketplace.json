@@ -1,0 +1,25 @@
+{
+  "name": "jdeploy-marketplace",
+  "owner": {
+    "name": "Steve Hannah",
+    "email": "steve@weblite.ca"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for creating and publishing Java applications with jDeploy"
+  },
+  "plugins": [
+    {
+      "name": "jdeploy",
+      "source": "./plugins/jdeploy",
+      "description": "Create and publish cross-platform Java desktop applications with jDeploy. Includes skills for project setup, creation from templates, local testing, and publishing to npm or GitHub.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Steve Hannah"
+      },
+      "homepage": "https://www.jdeploy.com",
+      "repository": "https://github.com/shannah/jdeploy-claude",
+      "keywords": ["jdeploy", "java", "desktop", "deployment", "installer", "cross-platform", "npm", "github"],
+      "category": "deployment"
+    }
+  ]
+}
