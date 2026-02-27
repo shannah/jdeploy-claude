@@ -1,5 +1,5 @@
 ---
-description: Build and run a jDeploy project locally for testing. Detects build system and launches the app.
+description: Build and run a jDeploy project locally for testing. Uses npx jdeploy run to launch the app exactly as it would run when installed.
 ---
 
 # jdeploy:run
@@ -8,7 +8,13 @@ Build and run a jDeploy project locally for testing.
 
 ## Overview
 
-This skill builds the project and runs it using jDeploy's local runner. This is the fastest way to test your application during development.
+This skill builds the project and runs it using `npx jdeploy run`. This command:
+- Installs the app locally if not already installed
+- Runs it exactly as it would when installed by end users
+- Uses the correct JRE version specified in package.json
+- Handles JavaFX bundling automatically
+
+**IMPORTANT**: Always use `npx jdeploy run` - never use `java -jar` directly, as that won't simulate the real installation environment.
 
 ## Instructions
 
@@ -22,17 +28,9 @@ ls package.json 2>/dev/null || echo "No package.json found"
 
 If no `package.json` exists, suggest running `/jdeploy:setup` first.
 
-### Step 2: Detect Build System
+### Step 2: Build the Project
 
-```bash
-# Check for Maven
-if [ -f pom.xml ]; then echo "maven"; fi
-
-# Check for Gradle
-if [ -f build.gradle ] || [ -f build.gradle.kts ]; then echo "gradle"; fi
-```
-
-### Step 3: Build the Project
+Detect the build system and build:
 
 **Maven:**
 ```bash
@@ -46,58 +44,43 @@ mvn clean package -DskipTests
 
 If the build fails, report the error and stop.
 
-### Step 4: Run with jDeploy
+### Step 3: Run with jDeploy
+
+**Always use this command:**
 
 ```bash
 npx jdeploy run
 ```
 
 This will:
-1. Locate the JAR specified in `package.json`
-2. Download/use the appropriate JRE for the configured Java version
-3. Launch the application
+1. Install the app locally if not already installed
+2. Use the JRE version specified in `jdeploy.javaVersion`
+3. Bundle JavaFX if `jdeploy.javafx` is true
+4. Launch the application exactly as end users would experience it
 
-### Alternative: Direct JAR Execution
+### Passing Arguments to the App
 
-If `npx jdeploy run` isn't working, you can run the JAR directly:
+To pass arguments to your application:
 
-```bash
-# Read JAR path from package.json
-JAR_PATH=$(node -p "require('./package.json').jdeploy.jar")
-java -jar "$JAR_PATH"
-```
-
-## Options
-
-The `jdeploy run` command accepts these options:
-
-| Option | Description |
-|--------|-------------|
-| `--` | Pass remaining arguments to the Java application |
-
-**Example with app arguments:**
 ```bash
 npx jdeploy run -- --help
 npx jdeploy run -- --config myconfig.json
+npx jdeploy run -- arg1 arg2
 ```
+
+Everything after `--` is passed to the Java application.
 
 ## Troubleshooting
 
 **"JAR not found"**:
 - Build the project first
-- Check that `jdeploy.jar` path in `package.json` matches actual output
+- Check that `jdeploy.jar` path in `package.json` matches actual build output
 
 **"Main class not found"**:
 - Verify the JAR manifest has `Main-Class` attribute
-- Check: `unzip -p target/myapp.jar META-INF/MANIFEST.MF | grep Main-Class`
-
-**"Java version mismatch"**:
-- jDeploy downloads the JRE specified in `jdeploy.javaVersion`
-- If you need a different version, update `package.json`
 
 **JavaFX issues**:
 - Ensure `jdeploy.javafx` is set to `true` in `package.json`
-- jDeploy will bundle JavaFX modules automatically
 
 ## Quick Reference
 
@@ -110,7 +93,4 @@ mvn clean package && npx jdeploy run
 
 # Run with arguments
 npx jdeploy run -- arg1 arg2
-
-# Skip build, just run
-npx jdeploy run
 ```
