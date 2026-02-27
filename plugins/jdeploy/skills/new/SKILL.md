@@ -50,7 +50,7 @@ npx jdeploy generate \
   -t <template> \
   -d <parent-directory> \
   --app-title="<App Title>" \
-  [--github-repository <username/repo>] \
+  [--github-repository=<username/repo>] \
   <fully.qualified.MainClass>
 ```
 
@@ -68,7 +68,7 @@ npx jdeploy generate -t javafx -d ~/projects --app-title="My FX App" com.mycompa
 
 MCP Server with GitHub:
 ```bash
-npx jdeploy generate -t spring-boot-mcp-server --app-title="My MCP Tool" --github-repository myuser/my-mcp-tool com.myuser.mcptool.MyMcpTool
+npx jdeploy generate -t spring-boot-mcp-server --app-title="My MCP Tool" --github-repository=myuser/my-mcp-tool com.myuser.mcptool.MyMcpTool
 ```
 
 CLI tool:
