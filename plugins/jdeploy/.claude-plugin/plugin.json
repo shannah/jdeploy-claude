@@ -1,7 +1,7 @@
 {
   "name": "jdeploy",
   "description": "Create and publish cross-platform Java desktop applications with jDeploy",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": {
     "name": "Steve Hannah",
     "email": "steve@weblite.ca"

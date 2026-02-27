@@ -43,37 +43,36 @@ Ask the user for the following information:
 
 ### Step 2: Run the Generate Command
 
-Construct and execute the command:
+Construct and execute the command. **IMPORTANT**: The fully-qualified class name MUST come FIRST, before any flags:
 
 ```bash
-npx jdeploy generate \
+npx jdeploy generate <fully.qualified.MainClass> \
   -t <template> \
   -d <parent-directory> \
   --app-title="<App Title>" \
-  [--github-repository=<username/repo>] \
-  <fully.qualified.MainClass>
+  [--github-repository=<username/repo>]
 ```
 
 **Examples:**
 
 Basic Swing app:
 ```bash
-npx jdeploy generate -t swing --app-title="My Desktop App" com.example.myapp.MyApp
+npx jdeploy generate com.example.myapp.MyApp -t swing --app-title="My Desktop App"
 ```
 
 JavaFX app in specific directory:
 ```bash
-npx jdeploy generate -t javafx -d ~/projects --app-title="My FX App" com.mycompany.fxapp.MainApp
+npx jdeploy generate com.mycompany.fxapp.MainApp -t javafx -d ~/projects --app-title="My FX App"
 ```
 
 MCP Server with GitHub:
 ```bash
-npx jdeploy generate -t spring-boot-mcp-server --app-title="My MCP Tool" --github-repository=myuser/my-mcp-tool com.myuser.mcptool.MyMcpTool
+npx jdeploy generate com.myuser.mcptool.MyMcpTool -t spring-boot-mcp-server --app-title="My MCP Tool" --github-repository=myuser/my-mcp-tool
 ```
 
 CLI tool:
 ```bash
-npx jdeploy generate -t picocli --app-title="My CLI" com.example.cli.MyCli
+npx jdeploy generate com.example.cli.MyCli -t picocli --app-title="My CLI"
 ```
 
 ### Step 3: Verify Generation
