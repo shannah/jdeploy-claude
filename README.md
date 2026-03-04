@@ -25,6 +25,7 @@ The following skills should now be available:
 - `/jdeploy:run`
 - `/jdeploy:install`
 - `/jdeploy:publish`
+- `/jdeploy:configure`
 
 ## Updating the Plugin
 
@@ -184,6 +185,43 @@ The skill remembers your choice in `.jdeploy/config.json` for future publishes.
 
 ---
 
+### `/jdeploy:configure` - Configure App Settings
+
+Configures various jDeploy settings for your application through a guided interface.
+
+**Usage:**
+```
+/jdeploy:configure
+```
+
+**Available Configuration Options:**
+
+| Option | Description |
+|--------|-------------|
+| Splash screen & icon | Set `splash.png`, `loading.png`, and `icon.png` |
+| Java runtime | Version, JDK vs JRE, JavaFX, JetBrains Runtime |
+| Commands & services | CLI commands, service controllers |
+| Helper actions | System tray menu items |
+| MCP server | AI tool integration |
+| File associations | Register file extensions (`documentTypes`) |
+| URL protocols | Custom URL schemes (`urlSchemes`) |
+| Singleton mode | Single-instance with deep linking |
+| Permissions | macOS permission requests |
+| Run as admin | Elevated privileges |
+
+**Example:**
+```
+/jdeploy:configure
+
+> What would you like to configure?
+> [x] Singleton mode
+> [x] URL protocols
+
+# Claude guides you through each selected option
+```
+
+---
+
 ## Example Workflow
 
 ### Creating a New Desktop App
@@ -263,7 +301,8 @@ jdeploy-claude/
 │           ├── new/SKILL.md
 │           ├── run/SKILL.md
 │           ├── install/SKILL.md
-│           └── publish/SKILL.md
+│           ├── publish/SKILL.md
+│           └── configure/SKILL.md
 ├── CLAUDE.md                   # Detailed setup reference
 └── README.md
 ```
