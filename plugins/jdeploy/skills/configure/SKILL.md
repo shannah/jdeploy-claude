@@ -499,13 +499,13 @@ Ensure only one instance of the application runs at a time. When a second instan
 <dependency>
     <groupId>ca.weblite</groupId>
     <artifactId>jdeploy-desktop-lib-swing</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 
 **For Swing apps (Gradle):**
 ```gradle
-implementation 'ca.weblite:jdeploy-desktop-lib-swing:1.0.2'
+implementation 'ca.weblite:jdeploy-desktop-lib-swing:1.0.4'
 ```
 
 **For JavaFX apps (Maven):**
@@ -513,13 +513,13 @@ implementation 'ca.weblite:jdeploy-desktop-lib-swing:1.0.2'
 <dependency>
     <groupId>ca.weblite</groupId>
     <artifactId>jdeploy-desktop-lib-javafx</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 
 **For JavaFX apps (Gradle):**
 ```gradle
-implementation 'ca.weblite:jdeploy-desktop-lib-javafx:1.0.2'
+implementation 'ca.weblite:jdeploy-desktop-lib-javafx:1.0.4'
 ```
 
 **Step 3: Register handler in code**
