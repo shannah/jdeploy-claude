@@ -612,6 +612,62 @@ jobs:
               notarization_password: ${{ secrets.MAC_NOTARIZATION_PASSWORD }}
 ```
 
+### npm Publishing Workflow
+
+To publish to the npm registry instead of (or in addition to) GitHub Releases, create `.github/workflows/jdeploy-npm.yml`:
+
+```yaml
+name: jDeploy npm Publish
+
+on:
+   push:
+      branches:
+         - '*-snapshot'
+      tags:
+         - 'v*'
+
+concurrency:
+   group: jdeploy-npm-${{ github.repository }}
+   cancel-in-progress: false
+
+jobs:
+   publish:
+      permissions:
+         contents: read
+         id-token: write
+      runs-on: ubuntu-latest
+
+      steps:
+         - uses: actions/checkout@v3
+         - name: Set up JDK
+           uses: actions/setup-java@v3
+           with:
+              java-version: '21'  # Match to project's Java version
+              distribution: 'temurin'
+         - name: Build with Maven
+           run: mvn clean package -DskipTests
+         - name: Publish to npm
+           uses: shannah/jdeploy@master
+           with:
+              deploy_target: npm
+              npm_token: ${{ secrets.NPM_TOKEN }}
+```
+
+**Key differences from the GitHub Releases workflow:**
+- Uses `deploy_target: npm` to publish to npm instead of creating GitHub release assets
+- Requires `id-token: write` permission for npm trusted publishing (OIDC provenance)
+- Only needs `contents: read` (not `write`) since it doesn't modify the GitHub release
+- Requires `NPM_TOKEN` secret or npm trusted publishing configured on npmjs.com
+- `package.json` must include a `repository.url` field matching the GitHub repo URL, or npm will reject the publish with an E422 provenance validation error
+
+**For Gradle projects**, replace the Maven build step with:
+```yaml
+         - name: Make gradlew executable
+           run: chmod +x ./gradlew
+         - name: Build with Gradle
+           run: ./gradlew build -x test
+```
+
 <!-- /section:github-workflows -->
 
 <!-- section:build-validation -->
