@@ -139,7 +139,7 @@ import io.quarkus.runtime.annotations.QuarkusMain;
 @QuarkusMain
 public class Main {
     public static void main(String... args) {
-        String mode = System.getProperty("jdeploy.mode", "gui");
+        String mode = System.getProperty("jdeploy.mode", "");
 
         if ("gui".equals(mode)) {
             // Show GUI fallback (see Section 6)
@@ -503,7 +503,7 @@ Add detection **early** in the `main()` method. If `jdeploy.mode` equals `"gui"`
 
 ```java
 public static void main(String[] args) {
-    String mode = System.getProperty("jdeploy.mode", "gui");
+    String mode = System.getProperty("jdeploy.mode", "");
 
     if ("gui".equals(mode)) {
         // Show a simple About dialog when launched as a desktop app
