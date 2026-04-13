@@ -167,7 +167,7 @@ If a suitable square icon is found, copy it to `icon.png` in the project root.
 If the app has NO GUI but has CLI/Service/MCP capabilities, inject a GUI fallback into the main class. Add this check at the start of `main()`:
 
 ```java
-String mode = System.getProperty("jdeploy.mode", "gui");
+String mode = System.getProperty("jdeploy.mode", "");
 if ("gui".equals(mode)) {
     javax.swing.SwingUtilities.invokeLater(() -> {
         javax.swing.JOptionPane.showMessageDialog(
