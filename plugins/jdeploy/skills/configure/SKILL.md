@@ -87,6 +87,10 @@ jDeploy supports two types of startup images:
 find . -name "*.png" -size +10k | head -20
 ```
 
+**Custom HTML Launcher Splash (jDeploy 5.2+):**
+
+For a fully customizable HTML/CSS splash screen shown during installation and updates, suggest running `/jdeploy:custom-launcher-splash`. This creates a `launcher-splash.html` file with branded design including animated loading indicators.
+
 ---
 
 ### Section: Application Icon
