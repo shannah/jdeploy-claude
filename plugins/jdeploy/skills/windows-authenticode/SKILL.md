@@ -50,15 +50,15 @@ Parse the `<owner>/<repo>` from the URL — it is needed for the secrets-setup i
 
 ### Step 2: Ask Which Signing Method to Use
 
-Ask the user which signing method they have:
+Ask the user which signing method they have (or want to set up):
 
-1. **PFX / PKCS12 certificate file** — A `.pfx` or `.p12` file plus a password. Older CAs may still deliver these, but as of June 2023 the CA/Browser Forum requires all publicly trusted code-signing keys to be generated and stored in a hardware crypto module, so new OV/EV certs are generally HSM-backed (use option 2 or 3 instead).
+1. **PFX / PKCS12 certificate file from a CA** — A `.pfx` or `.p12` file plus a password issued by a public CA. Older OV certs were delivered this way. As of June 2023 the CA/Browser Forum requires new publicly trusted code-signing keys to be generated and stored in a hardware crypto module, so new OV/EV certs are generally HSM-backed (use option 2 or 4 instead).
 
-2. **DigiCert KeyLocker (cloud HSM)** (Recommended for new certs) — DigiCert's cloud HSM signing service. Works on standard GitHub-hosted runners (`ubuntu-latest`) — no self-hosted runner required. This is the most common path for new OV/EV code-signing certs purchased from DigiCert.
+2. **DigiCert KeyLocker (cloud HSM)** (Recommended for new CA-issued certs) — DigiCert's cloud HSM signing service. Works on standard GitHub-hosted runners (`ubuntu-latest`) — no self-hosted runner required.
 
-3. **On-premise PKCS#11 / Hardware Security Module** — A physical token (SafeNet eToken, YubiKey, etc.) or an on-prem HSM. Requires a self-hosted GitHub runner with the HSM driver installed.
+3. **Self-signed certificate** (Recommended when no CA cert is available) — Sign with a certificate you generate yourself. Strictly better than not signing at all (see Step 3C for the full rationale). The skill walks the user through generating, securing, and using the cert.
 
-4. **No certificate yet** — If the user has not obtained a certificate, briefly describe the options and stop. Do not generate a self-signed certificate for production use; SmartScreen will still warn on self-signed binaries because the root is not trusted. Self-signed certs are only useful for internal/test distribution. Point them to a code-signing CA, then resume this skill once they have the cert in hand.
+4. **On-premise PKCS#11 / Hardware Security Module** — A physical token (SafeNet eToken, YubiKey, etc.) or an on-prem HSM. Requires a self-hosted GitHub runner with the HSM driver installed.
 
 ### Step 3A: PFX Signing Setup
 
@@ -240,7 +240,162 @@ Then update the existing `shannah/jdeploy` step to enable PKCS#11 signing and pa
 
 Skip to **Step 4**.
 
-### Step 3C: On-premise PKCS#11 / HSM Signing Setup
+### Step 3C: Self-Signed Certificate Setup
+
+Self-signed certificates are not trusted by Windows out of the box, but signing with one is meaningfully better than not signing at all:
+
+- **The UAC dialog shows the publisher name** (e.g. "Acme Corp") instead of "Unknown Publisher".
+- **Antivirus false-positive rates drop** — signed binaries with a consistent publisher identity attract fewer heuristic flags than unsigned ones.
+- **The jDeploy installer prompts the user to trust the publisher's certificate** at install time. Once accepted, subsequent installs from the same publisher run without SmartScreen or UAC publisher warnings.
+
+The trade-off vs. CA-issued certs (Steps 3A/3B): until a user accepts the cert, SmartScreen still flags the download, and `signtool verify` reports the chain as untrusted. This is fine for internal distribution (where IT can pre-deploy the cert via Group Policy) and acceptable for public distribution if you communicate the trust prompt to users in your release notes.
+
+Use this path if the user does not have a CA-issued cert and isn't ready to buy one. Do not use it as a substitute for a real cert in commercial software where users expect a clean install.
+
+#### 3C.1. Skip cert generation if one already exists
+
+If the user already has a self-signed `.pfx` from a previous setup, skip to step **3C.4** — the GitHub-secrets and workflow flow is the same as for a CA-issued PFX.
+
+#### 3C.2. Choose where to keep the certificate
+
+The signing key is a **long-lived secret**. Treat it like a master password:
+
+- **Generate it on the user's local machine, not in CI.** A CI-generated key would be ephemeral; users would have to re-trust the publisher on every release.
+- **Pick a directory outside any git working tree.** Recommended: `~/.config/code-signing/<app-name>/` (Linux/macOS) or `%USERPROFILE%\code-signing\<app-name>\` (Windows). Verify the chosen path is not inside any repo before writing files.
+- **Plan for backup.** If the `.pfx` is lost, the user cannot sign new releases under the same identity — end users will be prompted to re-trust a brand-new cert. Back up the `.pfx` to a password manager (1Password, Bitwarden) or a `gpg`-encrypted file in offline storage.
+
+Verify `openssl` is installed:
+
+```bash
+openssl version
+```
+
+If missing, install via the OS package manager (`brew install openssl`, `apt install openssl`) or download from openssl.org.
+
+#### 3C.3. Generate the certificate
+
+Ask the user for:
+
+- **Publisher name** — what users see in the UAC dialog (e.g. "Acme Corp"). Use the legal entity or product name. This builds reputation across releases, so it should be stable.
+- **Country code** — 2-letter ISO code (`US`, `CA`, `DE`, etc.).
+- **Cert password** — a strong random password protecting the `.pfx`. Generate with `openssl rand -base64 32` and store it in a password manager. **Don't reuse a memorable password** — this lives in CI as a GitHub secret.
+
+Run from the chosen directory (substitute `<publisher>`, `<country>`, and `<app-name>`):
+
+```bash
+mkdir -p ~/.config/code-signing/<app-name>
+cd ~/.config/code-signing/<app-name>
+
+# Code-signing extensions — without these, Windows won't accept the cert as a code-signing cert
+cat > code-signing-ext.cnf <<'EOF'
+[v3_code_signing]
+basicConstraints       = critical, CA:FALSE
+keyUsage               = critical, digitalSignature
+extendedKeyUsage       = critical, codeSigning
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always
+EOF
+
+# 10-year self-signed cert (4096-bit RSA)
+openssl req -x509 -newkey rsa:4096 \
+  -keyout signing-key.pem \
+  -out signing-cert.pem \
+  -days 3650 -nodes \
+  -subj "/CN=<publisher>/O=<publisher>/C=<country>" \
+  -extensions v3_code_signing \
+  -config <(cat /etc/ssl/openssl.cnf code-signing-ext.cnf)
+
+# Bundle into a .pfx for jsign (OpenSSL prompts for the export password)
+openssl pkcs12 -export \
+  -out signing-cert.pfx \
+  -inkey signing-key.pem \
+  -in signing-cert.pem \
+  -name "<publisher> Code Signing"
+```
+
+Notes:
+- **10 years** (3650 days) is reasonable for a self-signed cert. Authenticode signatures remain valid past cert expiry as long as they were timestamped at signing time — and jDeploy timestamps by default via DigiCert's RFC 3161 server.
+- **4096-bit RSA**: stronger than the 2048-bit baseline; self-signed costs nothing extra, so use the larger size.
+- The OpenSSL config path may differ: macOS Homebrew uses `$(brew --prefix)/etc/openssl@3/openssl.cnf`; on Windows use `openssl version -d` to find it.
+- **Do not commit** the `*.pem`, `*.pfx`, or `*.cnf` files; they go in the per-user dir, not the repo.
+
+Verify the cert has the right Extended Key Usage:
+
+```bash
+openssl pkcs12 -in signing-cert.pfx -nokeys -info | openssl x509 -text -noout | grep -A 1 "Extended Key Usage"
+```
+
+Expect to see `Code Signing`.
+
+After the `.pfx` is created and verified, you no longer need the loose `signing-key.pem` and `signing-cert.pem` files — the `.pfx` contains both, encrypted with the password. Delete them or move them to encrypted offline backup:
+
+```bash
+shred -u signing-key.pem signing-cert.pem code-signing-ext.cnf  # Linux
+# or
+rm -P signing-key.pem signing-cert.pem code-signing-ext.cnf     # macOS
+```
+
+#### 3C.4. Securely store the certificate
+
+Two storage destinations, both required:
+
+1. **Password manager / encrypted offline backup** — Store the `.pfx` (as a file attachment) alongside the password. This is the recovery copy for "lost laptop" scenarios.
+2. **GitHub repository secrets** — For CI signing (next sub-step).
+
+Add to the project's `.gitignore` defensively, even though the cert lives outside the repo, in case it's ever accidentally copied in:
+
+```
+# Code-signing certificates — must never be committed
+*.pfx
+*.p12
+*.key
+signing-key.pem
+signing-cert.pem
+code-signing-ext.cnf
+```
+
+Then add the secrets and update the workflow exactly as in Step 3A:
+
+```bash
+# Base64-encode the .pfx (run on the user's machine):
+#   macOS:   base64 -i signing-cert.pfx | tr -d '\n' | pbcopy
+#   Linux:   base64 -w 0 signing-cert.pfx | xclip -selection clipboard
+
+gh secret set WIN_SIGNING_CERT_BASE64 --repo <owner>/<repo>
+gh secret set WIN_SIGNING_PASSWORD --repo <owner>/<repo>
+```
+
+In `.github/workflows/jdeploy.yml`, add to the `shannah/jdeploy` step:
+
+```yaml
+      - name: Build App Installer Bundles
+        uses: shannah/jdeploy@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # ...existing inputs...
+          win_signing_certificate: ${{ secrets.WIN_SIGNING_CERT_BASE64 }}
+          win_signing_password: ${{ secrets.WIN_SIGNING_PASSWORD }}
+          win_signing_description: "<App Title>"
+          win_signing_url: "https://github.com/<owner>/<repo>"
+```
+
+Including `win_signing_description` and `win_signing_url` is especially worthwhile for self-signed certs — these strings appear in the cert details when users inspect the signature, and help establish identity in the absence of a trusted CA chain.
+
+#### 3C.5. What end users will see
+
+When users install a jDeploy `.exe` signed with a self-signed cert:
+
+1. SmartScreen may show "Windows protected your PC" — the user clicks **More info** → **Run anyway**.
+2. The jDeploy installer launches and offers to trust the publisher's certificate. Accepting imports the cert into the user's `Trusted Publishers` store.
+3. From that point on, every future install from the same publisher (signed with the same cert) runs without publisher warnings.
+
+Recommend the user mention this in their release notes — something like:
+
+> This installer is signed with a self-signed certificate. Windows may show a SmartScreen warning on first install; click **More info** → **Run anyway**, and accept the trust prompt in the installer to suppress warnings on future updates.
+
+Skip to **Step 4**.
+
+### Step 3D: On-premise PKCS#11 / HSM Signing Setup
 
 PKCS#11 signing requires the HSM's PKCS#11 provider library on the machine that runs the signing step. GitHub-hosted runners do **not** have these drivers, so this path requires a **self-hosted runner**.
 
@@ -362,7 +517,9 @@ A valid signature shows:
 | `KeystoreException: Failed to load the keystore` | Wrong password, or base64 of cert was corrupted (e.g. line breaks) | Re-encode the PFX with `base64 -w 0` (Linux) or `tr -d '\n'` (macOS) to strip newlines, then update the secret |
 | `Unable to find a key alias` | Certificate has no alias matching `win_signing_key_alias` | Omit `win_signing_key_alias` to use the first alias automatically, or run `keytool -list -keystore cert.pfx -storetype PKCS12` to find the actual alias |
 | `SignerCertificate is null` after signing | Older jsign version with OpenSSL 3.x certs | Use a current jDeploy release (jsign 7.0+) |
-| `0x80096019` basic constraint error | Self-signed cert was generated without proper extensions | Real CA-issued certs don't have this; for test certs include `basicConstraints=CA:FALSE`, `keyUsage=digitalSignature`, `extendedKeyUsage=codeSigning` |
+| `0x80096019` basic constraint error | Self-signed cert was generated without proper extensions | Re-run the OpenSSL command from Step 3C.3 — the extensions block (`basicConstraints=CA:FALSE`, `keyUsage=digitalSignature`, `extendedKeyUsage=codeSigning`) is required |
+| Self-signed `.exe` shows "Unknown Publisher" in UAC | Cert was generated without a `CN` or with a placeholder | Regenerate with a proper `-subj "/CN=..."` in Step 3C.3 — the CN is what UAC displays |
+| Users on a fresh machine see SmartScreen on every install | Expected for self-signed certs until the user accepts the trust prompt in the jDeploy installer | Mention the trust prompt in release notes (see Step 3C.5) |
 | PKCS#11 step fails with `CKR_PIN_INCORRECT` | Wrong PIN in `HSM_TOKEN_PIN` secret (or wrong API key for KeyLocker) | Reset the secret with the correct value |
 | PKCS#11 fails with `library not found` | PKCS#11 driver not installed on the runner | For on-prem HSM: install the vendor's PKCS#11 library on the self-hosted runner. For DigiCert KeyLocker: ensure the "Install DigiCert smtools" step ran successfully |
 | KeyLocker `smctl keypair ls` returns 401/403 | `SM_API_KEY` invalid, or client cert (`SM_CLIENT_CERT_FILE_B64`) doesn't match the API key's account | Regenerate the API key and re-download the client cert from DigiCert ONE; update both secrets |
@@ -406,7 +563,8 @@ gh release create v1.0.1 --title "v1.0.1" --notes "..."
 
 ## Security Notes
 
-- **Never** commit `.pfx`/`.p12` files or passwords to the repo. Add `*.pfx` and `*.p12` to `.gitignore` if certs live anywhere in the project tree.
+- **Never** commit `.pfx`/`.p12` files or passwords to the repo. Add `*.pfx` and `*.p12` to `.gitignore` defensively, even when the cert lives outside the working tree.
 - The jDeploy action writes the decoded PFX to `${{ runner.temp }}` and cleans it up after the workflow run (including on failure).
 - Rotate the keystore password and re-issue the cert if a secret is ever exposed in logs or accidentally committed.
-- For production releases, prefer EV certificates — they get immediate SmartScreen reputation and require HSM-backed keys, which makes accidental key exfiltration much harder.
+- For self-signed certs, the `.pfx` and its password are the only artifacts proving publisher identity. Lose them and end users have to re-trust a new cert. Keep an encrypted backup in a password manager and/or offline storage.
+- For production releases at scale, prefer EV certificates — they get immediate SmartScreen reputation and require HSM-backed keys, which makes accidental key exfiltration much harder. Self-signed and OV certs build reputation slowly via download volume.
