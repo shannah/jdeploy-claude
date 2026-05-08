@@ -52,11 +52,13 @@ Parse the `<owner>/<repo>` from the URL — it is needed for the secrets-setup i
 
 Ask the user which signing method they have:
 
-1. **PFX / PKCS12 certificate file** (Recommended for most users) — A `.pfx` or `.p12` file plus a password. This is what most code-signing CAs (Sectigo, SSL.com, DigiCert, GlobalSign) deliver for OV (Organization Validation) certificates.
+1. **PFX / PKCS12 certificate file** — A `.pfx` or `.p12` file plus a password. Older CAs may still deliver these, but as of June 2023 the CA/Browser Forum requires all publicly trusted code-signing keys to be generated and stored in a hardware crypto module, so new OV/EV certs are generally HSM-backed (use option 2 or 3 instead).
 
-2. **PKCS#11 / Hardware Security Module (HSM)** — Required for EV (Extended Validation) certificates and any cert backed by a physical token (SafeNet eToken, YubiKey, etc.). Requires a self-hosted GitHub runner with the HSM driver installed.
+2. **DigiCert KeyLocker (cloud HSM)** (Recommended for new certs) — DigiCert's cloud HSM signing service. Works on standard GitHub-hosted runners (`ubuntu-latest`) — no self-hosted runner required. This is the most common path for new OV/EV code-signing certs purchased from DigiCert.
 
-3. **No certificate yet** — If the user has not obtained a certificate, briefly describe the options and stop. Do not generate a self-signed certificate for production use; SmartScreen will still warn on self-signed binaries because the root is not trusted. Self-signed certs are only useful for internal/test distribution. Point them to a code-signing CA, then resume this skill once they have the cert in hand.
+3. **On-premise PKCS#11 / Hardware Security Module** — A physical token (SafeNet eToken, YubiKey, etc.) or an on-prem HSM. Requires a self-hosted GitHub runner with the HSM driver installed.
+
+4. **No certificate yet** — If the user has not obtained a certificate, briefly describe the options and stop. Do not generate a self-signed certificate for production use; SmartScreen will still warn on self-signed binaries because the root is not trusted. Self-signed certs are only useful for internal/test distribution. Point them to a code-signing CA, then resume this skill once they have the cert in hand.
 
 ### Step 3A: PFX Signing Setup
 
@@ -126,7 +128,119 @@ Use the `Edit` tool to insert the new inputs into the existing `with:` block —
 
 Skip to **Step 4**.
 
-### Step 3B: PKCS#11 / HSM Signing Setup
+### Step 3B: DigiCert KeyLocker Signing Setup
+
+DigiCert KeyLocker is a cloud HSM. The signing key never leaves DigiCert's HSM, but signing is invoked via DigiCert's `smtools` CLI and PKCS#11 provider library that gets installed on the runner at job time. This works on the standard `ubuntu-latest` GitHub-hosted runner — no self-hosted infrastructure required.
+
+#### 3B.1. Gather DigiCert credentials
+
+The user needs the following from their DigiCert ONE / KeyLocker account:
+
+- **API Key** (from DigiCert ONE → KeyLocker → API Tokens)
+- **Client Authentication Certificate** — a `.p12` file downloaded from KeyLocker, plus its password
+- **Host URL** — the SM_HOST URL for their DigiCert account (e.g. `https://clientauth.one.digicert.com`)
+- **Key alias** — the alias of the signing keypair as registered in KeyLocker (visible via `smctl keypair ls` after setup)
+
+#### 3B.2. Add GitHub repository secrets and variables
+
+```bash
+# Secrets
+gh secret set SM_API_KEY --repo <owner>/<repo>
+gh secret set SM_CLIENT_CERT_PASSWORD --repo <owner>/<repo>
+
+# Base64-encode the client cert .p12 (run on the user's machine):
+#   macOS:   base64 -i ClientCert.p12 | tr -d '\n' | pbcopy
+#   Linux:   base64 -w 0 ClientCert.p12 | xclip -selection clipboard
+gh secret set SM_CLIENT_CERT_FILE_B64 --repo <owner>/<repo>
+
+# Variable (not a secret — the host URL is not sensitive)
+gh variable set SM_HOST --repo <owner>/<repo> --body "https://clientauth.one.digicert.com"
+```
+
+#### 3B.3. Update the GitHub Actions workflow
+
+The workflow needs three new steps **before** the `shannah/jdeploy` step: install `smtools`, write the client cert and PKCS#11 config, and sync KeyLocker certificates. Then the `shannah/jdeploy` step is configured for PKCS#11 signing and given the DigiCert env vars.
+
+Insert these steps before the existing "Build App Installer Bundles" step in `.github/workflows/jdeploy.yml`:
+
+```yaml
+      - name: Install DigiCert smtools
+        env:
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+        run: |
+          if [ -z "$SM_API_KEY" ]; then
+            echo "SM_API_KEY not configured, skipping smtools install"
+            exit 0
+          fi
+          curl -L --fail --show-error \
+            -o smtools.tar.gz \
+            https://pki-downloads.digicert.com/stm/latest/smtools-linux-x64.tar.gz
+          tar -xzf smtools.tar.gz
+          sudo mkdir -p /opt/digicert
+          sudo cp -r smtools-linux-x64/* /opt/digicert/
+          sudo chmod -R +x /opt/digicert/
+          echo "/opt/digicert" >> $GITHUB_PATH
+          echo "DigiCert smtools installed to /opt/digicert"
+
+      - name: Configure DigiCert KeyLocker
+        env:
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+        run: |
+          if [ -z "$SM_API_KEY" ]; then
+            echo "SM_API_KEY not configured, skipping DigiCert configuration"
+            exit 0
+          fi
+          echo "${{ secrets.SM_CLIENT_CERT_FILE_B64 }}" | base64 -d > /tmp/digicert-client-cert.p12
+          cat > /tmp/digicert-pkcs11.cfg <<'CFGEOF'
+          name = DigiCertKeyLocker
+          library = /opt/digicert/smpkcs11.so
+          slotListIndex = 0
+          CFGEOF
+          echo "DigiCert KeyLocker PKCS#11 configured"
+
+      - name: Sync DigiCert KeyLocker certificates
+        env:
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_FILE: /tmp/digicert-client-cert.p12
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_HOST: ${{ vars.SM_HOST }}
+        run: |
+          if [ -z "$SM_API_KEY" ]; then
+            echo "SM_API_KEY not configured, skipping certificate sync"
+            exit 0
+          fi
+          smctl keypair ls
+          echo "Certificate sync complete"
+```
+
+Then update the existing `shannah/jdeploy` step to enable PKCS#11 signing and pass the DigiCert env vars:
+
+```yaml
+      - name: Build App Installer Bundles
+        uses: shannah/jdeploy@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # ...existing inputs...
+          win_signing_keystore_type: PKCS11
+          win_signing_pkcs11_config: /tmp/digicert-pkcs11.cfg
+          win_signing_password: ${{ secrets.SM_API_KEY }}
+        env:
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_CLIENT_CERT_FILE: /tmp/digicert-client-cert.p12
+          SM_CLIENT_CERT_PASSWORD: ${{ secrets.SM_CLIENT_CERT_PASSWORD }}
+          SM_HOST: ${{ vars.SM_HOST }}
+```
+
+**Key points specific to KeyLocker:**
+
+- `win_signing_password` is set to the **API key**, not a token PIN. The PKCS#11 provider uses the API key as the login password and then authenticates to KeyLocker via the client cert + `SM_*` environment variables.
+- The `SM_*` env vars must be on the `shannah/jdeploy` step itself — the PKCS#11 library reads them at signing time.
+- If the keypair has more than one alias, add `win_signing_key_alias: <alias>` matching the alias shown by `smctl keypair ls`. With a single keypair the first alias is used automatically.
+- Each step that uses smtools or jsign-PKCS#11 short-circuits when `SM_API_KEY` is empty. This lets contributors who don't have access to KeyLocker secrets run the workflow on forks without errors — they'll get unsigned `.exe` bundles instead.
+
+Skip to **Step 4**.
+
+### Step 3C: On-premise PKCS#11 / HSM Signing Setup
 
 PKCS#11 signing requires the HSM's PKCS#11 provider library on the machine that runs the signing step. GitHub-hosted runners do **not** have these drivers, so this path requires a **self-hosted runner**.
 
@@ -249,8 +363,11 @@ A valid signature shows:
 | `Unable to find a key alias` | Certificate has no alias matching `win_signing_key_alias` | Omit `win_signing_key_alias` to use the first alias automatically, or run `keytool -list -keystore cert.pfx -storetype PKCS12` to find the actual alias |
 | `SignerCertificate is null` after signing | Older jsign version with OpenSSL 3.x certs | Use a current jDeploy release (jsign 7.0+) |
 | `0x80096019` basic constraint error | Self-signed cert was generated without proper extensions | Real CA-issued certs don't have this; for test certs include `basicConstraints=CA:FALSE`, `keyUsage=digitalSignature`, `extendedKeyUsage=codeSigning` |
-| PKCS#11 step fails with `CKR_PIN_INCORRECT` | Wrong PIN in `HSM_TOKEN_PIN` secret | Reset the secret with the correct token PIN |
-| PKCS#11 fails with `library not found` | PKCS#11 driver not installed on the runner | Install the HSM vendor's PKCS#11 library on the self-hosted runner |
+| PKCS#11 step fails with `CKR_PIN_INCORRECT` | Wrong PIN in `HSM_TOKEN_PIN` secret (or wrong API key for KeyLocker) | Reset the secret with the correct value |
+| PKCS#11 fails with `library not found` | PKCS#11 driver not installed on the runner | For on-prem HSM: install the vendor's PKCS#11 library on the self-hosted runner. For DigiCert KeyLocker: ensure the "Install DigiCert smtools" step ran successfully |
+| KeyLocker `smctl keypair ls` returns 401/403 | `SM_API_KEY` invalid, or client cert (`SM_CLIENT_CERT_FILE_B64`) doesn't match the API key's account | Regenerate the API key and re-download the client cert from DigiCert ONE; update both secrets |
+| KeyLocker signing fails with `cert chain not found` | The keypair in KeyLocker has no associated certificate, or the cert hasn't finished issuance | In DigiCert ONE, verify the cert is "Issued" and bound to the keypair; re-run `smctl keypair ls` to confirm |
+| KeyLocker signing fails with `connection refused` to SM_HOST | Wrong `SM_HOST` for the user's DigiCert account region | Check the URL in DigiCert ONE → Account Settings; update the `SM_HOST` repository variable |
 | SmartScreen still warns on the signed binary | OV certs build reputation over time; new certs trigger SmartScreen until enough downloads occur | Use an EV certificate for instant SmartScreen reputation, or wait/build reputation organically |
 
 ---
