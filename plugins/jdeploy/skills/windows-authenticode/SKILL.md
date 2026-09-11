@@ -48,6 +48,22 @@ git remote get-url origin
 
 Parse the `<owner>/<repo>` from the URL — it is needed for the secrets-setup instructions in Step 4.
 
+**Verify Windows bundles are actually built.** Signing only acts on a produced `.exe`, and jDeploy only builds the native `.exe` for platforms enabled in `jdeploy.artifacts`. If no Windows platform is enabled, the publish step skips native-bundle building and the `win_signing_*` inputs added later will silently do nothing.
+
+```bash
+node -p "JSON.stringify(require('./package.json').jdeploy.artifacts || null)"
+```
+
+If this prints `null` or has no enabled `win-*` entry, add one to the `jdeploy` block (include `win-arm64` only if the app supports Windows on ARM):
+
+```json
+"artifacts": {
+  "win-x64": { "enabled": true }
+}
+```
+
+Note: `jdeploy.artifacts` is the switch that drives native-bundle building/signing. The older `platformBundlesEnabled` flag is a different mechanism and does not trigger it — don't rely on it for signing.
+
 ### Step 2: Ask Which Signing Method to Use
 
 Ask the user which signing method they have (or want to set up):
@@ -513,6 +529,7 @@ A valid signature shows:
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
+| Workflow is green but there's no signed `.exe` (or no `.exe` at all) in the release | `jdeploy.artifacts` enables no Windows platform, so jDeploy never builds a Windows bundle and signing has nothing to act on | Add `"win-x64": { "enabled": true }` (and `win-arm64` if supported) under `jdeploy.artifacts` in `package.json` |
 | Workflow runs but installers are unsigned | Required secrets not set, or input names misspelled | Verify `WIN_SIGNING_CERT_BASE64` and `WIN_SIGNING_PASSWORD` exist in repo secrets and are referenced correctly in the workflow |
 | `KeystoreException: Failed to load the keystore` | Wrong password, or base64 of cert was corrupted (e.g. line breaks) | Re-encode the PFX with `base64 -w 0` (Linux) or `tr -d '\n'` (macOS) to strip newlines, then update the secret |
 | `Unable to find a key alias` | Certificate has no alias matching `win_signing_key_alias` | Omit `win_signing_key_alias` to use the first alias automatically, or run `keytool -list -keystore cert.pfx -storetype PKCS12` to find the actual alias |
